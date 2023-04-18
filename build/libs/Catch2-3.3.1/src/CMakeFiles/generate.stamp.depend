@@ -1,0 +1,5 @@
+# CMake generation dependency list for this directory.
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCXXCompilerFlag.cmake
+D:/Projects/IZG/izg_project/libs/Catch2-3.3.1/CMake/CatchMiscFunctions.cmake
+D:/Projects/IZG/izg_project/libs/Catch2-3.3.1/src/CMakeLists.txt
+D:/Projects/IZG/izg_project/libs/Catch2-3.3.1/src/catch2/catch_user_config.hpp.in

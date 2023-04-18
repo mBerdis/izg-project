@@ -1,0 +1,11 @@
+# CMake generation dependency list for this directory.
+D:/Programs/CMake/share/cmake-3.24/Modules/BasicConfigVersion-SameMajorVersion.cmake.in
+D:/Programs/CMake/share/cmake-3.24/Modules/CMakePackageConfigHelpers.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCCompilerFlag.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCXXCompilerFlag.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/GNUInstallDirs.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/GenerateExportHeader.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/WriteBasicConfigVersionFile.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/exportheader.cmake.in
+D:/Projects/IZG/izg_project/libs/TxtUtils/CMakeLists.txt
+D:/Projects/IZG/izg_project/libs/TxtUtils/CMakeUtils.cmake

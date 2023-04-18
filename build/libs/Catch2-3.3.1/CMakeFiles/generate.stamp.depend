@@ -1,0 +1,7 @@
+# CMake generation dependency list for this directory.
+D:/Programs/CMake/share/cmake-3.24/Modules/CMakeDependentOption.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CMakePackageConfigHelpers.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/GNUInstallDirs.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/WriteBasicConfigVersionFile.cmake
+D:/Projects/IZG/izg_project/libs/Catch2-3.3.1/CMake/CatchConfigOptions.cmake
+D:/Projects/IZG/izg_project/libs/Catch2-3.3.1/CMakeLists.txt

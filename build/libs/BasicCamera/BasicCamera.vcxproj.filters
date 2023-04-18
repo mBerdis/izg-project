@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\FreeLookCamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\OrbitCamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\PerspectiveCamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\Fwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\FreeLookCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\OrbitCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\BasicCamera\src\BasicCamera\PerspectiveCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Projects\IZG\izg_project\libs\BasicCamera\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{183A2228-F9BC-3C60-B9EA-D607DBA244E8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{E3423B46-94A3-3445-A3AA-4AD80BB738F3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

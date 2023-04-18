@@ -1,0 +1,17 @@
+# CMake generation dependency list for this directory.
+D:/Programs/CMake/share/cmake-3.24/Modules/BasicConfigVersion-SameMajorVersion.cmake.in
+D:/Programs/CMake/share/cmake-3.24/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CMakePackageConfigHelpers.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCCompilerFlag.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCSourceCompiles.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCXXCompilerFlag.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/CheckCXXSourceCompiles.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/GNUInstallDirs.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/GenerateExportHeader.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/Internal/CheckCompilerFlag.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/Internal/CheckFlagCommonConfig.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/Internal/CheckSourceCompiles.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/WriteBasicConfigVersionFile.cmake
+D:/Programs/CMake/share/cmake-3.24/Modules/exportheader.cmake.in
+D:/Projects/IZG/izg_project/libs/MealyMachine/CMakeLists.txt
+D:/Projects/IZG/izg_project/libs/MealyMachine/CMakeUtils.cmake

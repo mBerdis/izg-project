@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\ArgumentViewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ArgumentViewerImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\Format.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ValueFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\CommonFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\LineSplitter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\IsPresentFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\Globals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ArgumentListFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ContextFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\StringVectorFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ArgumentViewerImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\Format.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ValueFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\SingleValueFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\LineSplitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\VectorFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\StringVectorFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\IsPresentFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ArgumentListFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\ContextFormat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\CommonFunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\private\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\ArgumentViewer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\Fwd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\src\ArgumentViewer\Exception.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Projects\IZG\izg_project\libs\ArgumentViewer\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{183A2228-F9BC-3C60-B9EA-D607DBA244E8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{E3423B46-94A3-3445-A3AA-4AD80BB738F3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

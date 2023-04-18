@@ -1,0 +1,240 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Projects\IZG\izg_project\student\gpu.cpp">
+      <Filter>student</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\student\drawModel.cpp">
+      <Filter>student</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\arguments.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\main.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\window.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\programContext.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\application.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\bunny.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\textureData.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\model.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\framework\systemSpecific.cpp">
+      <Filter>framework</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\emptyMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\triangleMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\rotatingTriangles.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\triangleClip1Method.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\triangleClip2Method.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\triangle3DMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\triangleBufferMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\czFlagMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\angry.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\stairs.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\phongMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\texturedQuadMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\skFlagMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\examples\modelMethod.cpp">
+      <Filter>examples</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\libs\impl.cpp">
+      <Filter>libs</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\testCommon.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\gpuMemToStr.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\commandBufferToStr.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\modelTestUtils.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\renderMethodFrame.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\takeScreenShot.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\conformanceTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\performanceTest.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\commandTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\vertexShaderTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\fragmentShaderTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\clippingTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\traverseModelTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\drawModelTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\shaderTests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\finalImageTest.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projects\IZG\izg_project\tests\saveFrame.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Projects\IZG\izg_project\student\fwd.hpp">
+      <Filter>student</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\student\gpu.hpp">
+      <Filter>student</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\student\drawModel.hpp">
+      <Filter>student</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\arguments.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\window.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\method.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\programContext.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\application.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\timer.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\bunny.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\framebuffer.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\textureData.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\model.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\framework\systemSpecific.hpp">
+      <Filter>framework</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\examples\modelMethod.hpp">
+      <Filter>examples</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\tiny_gltf\tiny_gltf.h">
+      <Filter>libs</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\stb_image\stb_image.h">
+      <Filter>libs</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\stb_image\stb_image_write.h">
+      <Filter>libs</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\libs\json\json.hpp">
+      <Filter>libs</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\testCommon.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\gpuMemToStr.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\commandBufferToStr.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\modelTestUtils.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\renderMethodFrame.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\takeScreenShot.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\conformanceTests.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\performanceTest.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projects\IZG\izg_project\tests\saveFrame.hpp">
+      <Filter>tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Projects\IZG\izg_project\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="examples">
+      <UniqueIdentifier>{5D26E653-F098-3E3B-877A-3089B346A910}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="framework">
+      <UniqueIdentifier>{C3AC5DB7-56A9-3BB7-A0CF-8DD35A1EC5AD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs">
+      <UniqueIdentifier>{0654ABA6-28AF-3DA1-9898-C6B8CBF9CA71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="student">
+      <UniqueIdentifier>{21F4DF87-6BD9-3F32-A8E7-FC3E56CF3FDB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{3B7736E2-8AEC-32BD-AEDA-323359703F32}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
