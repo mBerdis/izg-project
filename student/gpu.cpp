@@ -7,7 +7,60 @@
 
 #include <student/gpu.hpp>
 
+void runVertexAssembly(InVertex inVertex)
+{
+    //computeVertexID();
+    //readAttributes();
+}
 
+void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
+{
+    Program prg = mem.programs[cmd.programID];
+
+    for (size_t i = 0; i < cmd.nofVertices; i++)
+    {
+        InVertex inVertex;
+        inVertex.gl_DrawID = drawID;
+
+        if (cmd.backfaceCulling)
+        {
+
+        }
+        else
+            inVertex.gl_VertexID = i;
+
+        OutVertex outVertex;
+        runVertexAssembly(inVertex);
+        ShaderInterface si;
+        prg.vertexShader(outVertex, inVertex, si);
+    }
+}
+
+void clear(GPUMemory& mem, ClearCommand cmd) {
+    if (cmd.clearColor) {
+        uint8_t red     = (uint8_t) (cmd.color.r * 255.f);
+        uint8_t green   = (uint8_t) (cmd.color.g * 255.f);
+        uint8_t blue    = (uint8_t) (cmd.color.b * 255.f);
+        uint8_t alpha   = (uint8_t) (cmd.color.a * 255.f);
+
+        size_t colorBuffLenght = (mem.framebuffer.width * mem.framebuffer.height) * 4;
+        for (size_t i = 0; i+4 < colorBuffLenght; i+= 4)
+        {
+            mem.framebuffer.color[i]        = red  ;
+            mem.framebuffer.color[i + 1]    = green;
+            mem.framebuffer.color[i + 2]    = blue ;
+            mem.framebuffer.color[i + 3]    = alpha;
+        }
+    }
+    if (cmd.clearDepth)
+    {
+        size_t depthBuffLenght = mem.framebuffer.width * mem.framebuffer.height;
+        for (size_t i = 0; i < depthBuffLenght; i++)
+        {
+            mem.framebuffer.depth[i] = cmd.depth;
+        }
+    }
+}
 
 //! [gpu_execute]
 void gpu_execute(GPUMemory&mem,CommandBuffer &cb){
@@ -18,6 +71,20 @@ void gpu_execute(GPUMemory&mem,CommandBuffer &cb){
   /// mem obsahuje paměť grafické karty.
   /// cb obsahuje command buffer pro zpracování.
   /// Bližší informace jsou uvedeny na hlavní stránce dokumentace.
+  
+  uint32_t drawID = 0;
+
+  for (uint32_t i = 0; i < cb.nofCommands; ++i) {
+      CommandType type = cb.commands[i].type;
+      CommandData data = cb.commands[i].data;
+      if (type == CommandType::CLEAR)
+          clear(mem, data.clearCommand);
+      if (type == CommandType::DRAW)
+      {
+          draw(mem, data.drawCommand, drawID);
+          drawID++;
+      }
+  }
 }
 //! [gpu_execute]
 
