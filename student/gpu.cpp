@@ -7,6 +7,10 @@
 
 #include <student/gpu.hpp>
 
+struct Triangle {
+    OutVertex points[3];
+};
+
 void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const& attrib, uint32_t shaderInvocation, uint32_t vertexId)
 {
     if (attrib.type == AttributeType::EMPTY) return;
@@ -92,20 +96,123 @@ void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& va
     }
 }
 
-void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
+Triangle primitiveAssembly(GPUMemory& mem, DrawCommand cmd, uint32_t drawID, uint32_t triangleIndex)
 {
     Program prg = mem.programs[cmd.programID];
+    Triangle triangle;
 
-    for (size_t i = 0; i < cmd.nofVertices; i++)
+    uint32_t firstVertexIndex = triangleIndex * 3;
+    for (size_t i = firstVertexIndex; i < firstVertexIndex + 3; i++)
     {
         InVertex inVertex;
         OutVertex outVertex;
         inVertex.gl_DrawID = drawID;
-        
+
         runVertexAssembly(&inVertex, mem, cmd.vao, i);
 
         ShaderInterface si;
         prg.vertexShader(outVertex, inVertex, si);
+
+        triangle.points[i % 3] = outVertex;
+    }
+
+    return triangle;
+}
+
+void perspectiveDivision(Triangle* triangle)
+{
+    for (size_t i = 0; i < 3; i++)
+    {
+        float w = triangle->points[i].gl_Position.w;
+        triangle->points[i].gl_Position.x /= w;
+        triangle->points[i].gl_Position.y /= w;
+        triangle->points[i].gl_Position.z /= w;
+        triangle->points[i].gl_Position.w = 1;
+    }
+}
+
+void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
+{
+    for (size_t i = 0; i < 3; i++)
+    {
+        triangle->points[i].gl_Position.x = (triangle->points[i].gl_Position.x + 1.0f) * width * 0.5f;
+        triangle->points[i].gl_Position.y = (triangle->points[i].gl_Position.y + 1.0f) * height * 0.5f;
+    }
+}
+
+void rasterize(Frame frame, Triangle* triangle, Program prg, DrawCommand cmd)
+{
+    // bounding box
+    uint32_t min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
+    uint32_t min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+
+    uint32_t max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
+    uint32_t max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+
+    min_x = glm::min(min_x, (uint32_t) 0);
+    min_y = glm::min(min_y, (uint32_t) 0);
+    max_x = glm::max(max_x, frame.width);
+    max_y = glm::max(max_y, frame.height);
+
+
+    if (cmd.backfaceCulling)
+    {
+        // do culling
+    }
+
+    // point[1] - point[0]
+    glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
+    // point[2] - point[1]
+    glm::vec2 dirVec2 = glm::vec2(triangle->points[2].gl_Position.x - triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.y - triangle->points[1].gl_Position.y);
+    // point[0] - point[2]
+    glm::vec2 dirVec3 = glm::vec2(triangle->points[0].gl_Position.x - triangle->points[2].gl_Position.x, triangle->points[0].gl_Position.y - triangle->points[2].gl_Position.y);
+
+    // E1 = (min_y - point[0].y) * dirVec1.x - (min_x - point[0].x) * dirVec1.y
+    int32_t E1 = (min_y - triangle->points[0].gl_Position.y) * dirVec1.x - (min_x - triangle->points[0].gl_Position.x) * dirVec1.y;
+
+    // E2 = (min_y - point[1].y) * dirVec2.x - (min_x - point[1].x) * dirVec2.y
+    int32_t E2 = (min_y - triangle->points[1].gl_Position.y) * dirVec2.x - (min_x - triangle->points[1].gl_Position.x) * dirVec2.y;
+
+    // E3 = (min_y - point[2].y) * dirVec3.x - (min_x - point[2].x) * dirVec3.y
+    int32_t E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
+
+    ShaderInterface si;
+    for (size_t y = min_y; y < max_y; y++)
+    {
+        int32_t t1 = E1;
+        int32_t t2 = E2;
+        int32_t t3 = E3;
+
+        for (size_t x = min_x; x < max_x; x++)
+        {
+            if (0 <= t1 && 0 <= t2 && 0 <= t3)
+            {
+                InFragment inFragment;
+                inFragment.gl_FragCoord.x = x + 0.5f;
+                inFragment.gl_FragCoord.y = y + 0.5f;
+                OutFragment outFragrament;
+                prg.fragmentShader(outFragrament, inFragment, si);
+            }
+
+            t1 -= dirVec1.y;
+            t2 -= dirVec2.y;
+            t3 -= dirVec3.y;
+        }
+
+        E1 += dirVec1.x;
+        E2 += dirVec2.x;
+        E3 += dirVec3.x;
+    }
+}
+
+void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
+{
+    for (size_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
+    {
+        Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
+        perspectiveDivision(&triangle);
+        viewportTransformation(&triangle, mem.framebuffer.width, mem.framebuffer.height);
+        rasterize(mem.framebuffer, &triangle, mem.programs[cmd.programID], cmd);
     }
 }
 
