@@ -7,10 +7,54 @@
 
 #include <student/gpu.hpp>
 
-void runVertexAssembly(InVertex inVertex)
+void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const& attrib, uint32_t shaderInvocation, uint32_t vertexId)
 {
-    //computeVertexID();
-    //readAttributes();
+    if (attrib.type == AttributeType::EMPTY) return;
+
+    const void* attribBuffer = mem.buffers[attrib.bufferID].data;
+    unsigned char* bytePtr = reinterpret_cast<unsigned char*>(const_cast<void*>(attribBuffer));
+    bytePtr += attrib.offset + attrib.stride * vertexId;
+
+    if (attrib.type == AttributeType::UVEC2)
+    {
+        glm::uvec2* ind = (glm::uvec2*)(bytePtr);
+        vertexAtrrib->u2 = *ind;
+    }
+    if (attrib.type == AttributeType::UVEC3)
+    {
+        glm::uvec3 *ind = (glm::uvec3*)(bytePtr);
+        vertexAtrrib->u3 = *ind;
+    }
+    if (attrib.type == AttributeType::UVEC4)
+    {
+        glm::uvec4* ind = (glm::uvec4*)(bytePtr);
+        vertexAtrrib->u4 = *ind;
+    }
+    if (attrib.type == AttributeType::VEC4)
+    {
+        glm::vec4* ind = (glm::vec4*)(bytePtr);
+        vertexAtrrib->v4 = *ind;
+    }
+    if (attrib.type == AttributeType::VEC3)
+    {
+        glm::vec3* ind = (glm::vec3*)(bytePtr);
+        vertexAtrrib->v3 = *ind;
+    }
+    if (attrib.type == AttributeType::VEC2)
+    {
+        glm::vec2* ind = (glm::vec2*)(bytePtr);
+        vertexAtrrib->v2 = *ind;
+    }
+    if (attrib.type == AttributeType::FLOAT)
+    {
+        float* ind = (float*)(bytePtr);
+        vertexAtrrib->v1 = *ind;
+    }
+    if (attrib.type == AttributeType::UINT)
+    {
+        uint32_t* ind = (uint32_t*)(bytePtr);
+        vertexAtrrib->u1 = *ind;
+    }
 }
 
 uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shaderInvocation)
@@ -18,21 +62,33 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
     if (vao.indexBufferID < 0) return shaderInvocation;
 
     const void* indexBuffer = mem.buffers[vao.indexBufferID].data;
+    unsigned char* bytePtr = reinterpret_cast<unsigned char*>(const_cast<void*>(indexBuffer));
+    bytePtr += vao.indexOffset;
 
     if (vao.indexType == IndexType::UINT32)
     {
-        uint32_t* ind = (uint32_t*)(indexBuffer);
-        return ind[shaderInvocation + vao.indexOffset * 4];
+        uint32_t* ind = (uint32_t*)(bytePtr);
+        return ind[shaderInvocation];
     }
     else if (vao.indexType == IndexType::UINT16)
     {
-        uint16_t* ind = (uint16_t*)(indexBuffer);
-        return ind[shaderInvocation + vao.indexOffset * 2];
+        uint16_t* ind = (uint16_t*)(bytePtr);
+        return ind[shaderInvocation];
     }
     else if (vao.indexType == IndexType::UINT8)
     {
-        uint8_t* ind = (uint8_t*)(indexBuffer);
-        return ind[shaderInvocation + vao.indexOffset * 1];
+        uint8_t* ind = (uint8_t*)(bytePtr);
+        return ind[shaderInvocation];
+    }
+}
+
+void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& vao, uint32_t shaderInvocation)
+{
+    inVertex->gl_VertexID = computeVertexID(mem, vao, shaderInvocation);
+    
+    for (size_t i = 0; i < maxAttributes; i++)
+    {
+        readAttributes(&inVertex->attributes[i], mem, vao.vertexAttrib[i], shaderInvocation, inVertex->gl_VertexID);
     }
 }
 
@@ -43,10 +99,11 @@ void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID)
     for (size_t i = 0; i < cmd.nofVertices; i++)
     {
         InVertex inVertex;
-        inVertex.gl_DrawID = drawID;
-        inVertex.gl_VertexID = computeVertexID(mem, cmd.vao, i);
         OutVertex outVertex;
-        runVertexAssembly(inVertex);
+        inVertex.gl_DrawID = drawID;
+        
+        runVertexAssembly(&inVertex, mem, cmd.vao, i);
+
         ShaderInterface si;
         prg.vertexShader(outVertex, inVertex, si);
     }
