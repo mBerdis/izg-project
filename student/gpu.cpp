@@ -140,25 +140,48 @@ void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
     }
 }
 
+void loadFragmentToShader(float x, float y, float depth, Program prg, ShaderInterface si)
+{
+    InFragment inFragment;
+    inFragment.gl_FragCoord.x = x + 0.5f;
+    inFragment.gl_FragCoord.y = y + 0.5f;
+    inFragment.gl_FragCoord.z = depth;
+
+    //printf("(%f, %f)\n", inFragment.gl_FragCoord.x, inFragment.gl_FragCoord.y);
+
+    OutFragment outFragrament;
+    prg.fragmentShader(outFragrament, inFragment, si);
+}
+
+float triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, float dY2)
+{
+    float dArea = ((dX1 - dX0) * (dY2 - dY0) - (dX2 - dX0) * (dY1 - dY0)) / 2.0;
+    return (dArea > 0.0) ? dArea : -dArea;
+}
+
+float calculateFragmentDepth(OutVertex p1, OutVertex p2, OutVertex p3, float x, float y)
+{
+    float area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
+    float l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
+    float l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
+    float l2 = 1.f - (l0 + l1);
+
+    return p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2;
+}
+
 void rasterize(Frame frame, Triangle* triangle, Program prg, DrawCommand cmd)
 {
     // bounding box
-    uint32_t min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
-    uint32_t min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+    float min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
+    float min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
 
-    uint32_t max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
-    uint32_t max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+    float max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
+    float max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
 
-    min_x = glm::min(min_x, (uint32_t) 0);
-    min_y = glm::min(min_y, (uint32_t) 0);
-    max_x = glm::max(max_x, frame.width);
-    max_y = glm::max(max_y, frame.height);
-
-
-    if (cmd.backfaceCulling)
-    {
-        // do culling
-    }
+    min_x = glm::max(min_x, 0.f);
+    min_y = glm::max(min_y, 0.f);
+    max_x = glm::min(max_x, (float) (frame.width - 1));
+    max_y = glm::min(max_y, (float) (frame.height - 1));
 
     // point[1] - point[0]
     glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
@@ -177,23 +200,30 @@ void rasterize(Frame frame, Triangle* triangle, Program prg, DrawCommand cmd)
     int32_t E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
 
     ShaderInterface si;
-    for (size_t y = min_y; y < max_y; y++)
+    for (float y = min_y; y < max_y; y++)
     {
         int32_t t1 = E1;
         int32_t t2 = E2;
         int32_t t3 = E3;
 
-        for (size_t x = min_x; x < max_x; x++)
+        for (float x = min_x; x < max_x; x++)
         {
+            // check for CCW triangles 
             if (0 <= t1 && 0 <= t2 && 0 <= t3)
             {
-                InFragment inFragment;
-                inFragment.gl_FragCoord.x = x + 0.5f;
-                inFragment.gl_FragCoord.y = y + 0.5f;
-                OutFragment outFragrament;
-                prg.fragmentShader(outFragrament, inFragment, si);
+                float depth = calculateFragmentDepth(triangle->points[0], triangle->points[1], triangle->points[2], x, y);
+                loadFragmentToShader(x, y, depth, prg, si);
             }
-
+            else if (!cmd.backfaceCulling)
+            {
+                // check for CW triangles
+                if (0 > t1 && 0 > t2 && 0 > t3)
+                {
+                    float depth = calculateFragmentDepth(triangle->points[0], triangle->points[1], triangle->points[2], x, y);
+                    loadFragmentToShader(x, y, depth, prg, si);
+                }
+            }
+                
             t1 -= dirVec1.y;
             t2 -= dirVec2.y;
             t3 -= dirVec3.y;
