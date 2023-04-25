@@ -222,7 +222,7 @@ void loadFragmentToShader(float x, float y, Program prg, ShaderInterface si, Out
     //{
     //    printf("(%f, %f)\n", inFragment.gl_FragCoord.x, inFragment.gl_FragCoord.y);
     //}
-    printf("(%f, %f)\n", inFragment.gl_FragCoord.x, inFragment.gl_FragCoord.y);
+    //printf("(%f, %f)\n", inFragment.gl_FragCoord.x, inFragment.gl_FragCoord.y);
 
     OutFragment outFragrament;
     prg.fragmentShader(outFragrament, inFragment, si);
@@ -259,25 +259,26 @@ void rasterize(Frame frame, Triangle* triangle, Program prg, DrawCommand cmd)
     int32_t E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
 
     ShaderInterface si;
-    for (float y = min_y + 0.5f; y <= max_y; y++)
+    for (float y = min_y + 0.5f; y < max_y; y++)
     {
         int32_t t1 = E1;
         int32_t t2 = E2;
         int32_t t3 = E3;
 
-        for (float x = min_x + 0.5f; x <= max_x; x++)
+        for (float x = min_x + 0.5f; x < max_x; x++)
         {
             // check for CCW triangles 
-            if (0 < t1 && 0 < t2 && 0 < t3)
+            if (t1 > 0 && t2 > 0 && t3 >= 0)
             {
-                loadFragmentToShader(y, x, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
+                //printf("(%d, %d, %d)\n", t1, t2, t3);
+                loadFragmentToShader(x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
             }
             else if (!cmd.backfaceCulling)
             {
                 // check for CW triangles
-                if (0 > t1 && 0 > t2 && 0 > t3)
+                if (t1 <= 0 && t2 <= 0 && t3 <= 0)
                 {
-                    loadFragmentToShader(y, x, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
+                    loadFragmentToShader(x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
                 }
             }
                 
