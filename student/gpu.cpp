@@ -114,13 +114,8 @@ Triangle primitiveAssembly(GPUMemory& mem, DrawCommand cmd, uint32_t drawID, uin
         si.uniforms = mem.uniforms;
         si.textures = mem.textures;
 
-        //printf("%f BEFORE VERTEX SHADER\n", outVertex.gl_Position.z);
-
         prg.vertexShader(outVertex, inVertex, si);
-
         triangle.points[i % 3] = outVertex;
-
-        //printf("%f AFTER VERTEX SHADER\n", triangle.points[i % 3].gl_Position.z);
     }
 
     return triangle;
@@ -130,12 +125,10 @@ void perspectiveDivision(Triangle* triangle)
 {
     for (size_t i = 0; i < 3; i++)
     {
-        //printf("%f BEFORE PESPECTIVE DIV\n", triangle->points[i].gl_Position.z);
         float w = triangle->points[i].gl_Position.w;
         triangle->points[i].gl_Position.x /= w;
         triangle->points[i].gl_Position.y /= w;
         triangle->points[i].gl_Position.z /= w;
-        //printf("%f AFTER  PESPECTIVE DIV\n", triangle->points[i].gl_Position.z);
     }
 }
 
@@ -215,6 +208,7 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
 
     if (depth >= framebuffer.depth[pixelPos])
     {
+        //printf("DISCARD (%f, %f)\n", depth, framebuffer.depth[pixelPos]);
         // discard fragment
         return;
     }
@@ -233,11 +227,10 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
         framebuffer.depth[pixelPos] = depth;
     }
 
-    framebuffer.color[pos] = (uint8_t) ((framebuffer.color[pos] * (1.f - color.w)) + ((color.x * 255.f) * color.w));
+    framebuffer.color[pos + 0] = (uint8_t) ((framebuffer.color[pos + 0] * (1.f - color.w)) + ((color.x * 255.f) * color.w));
     framebuffer.color[pos + 1] = (uint8_t) ((framebuffer.color[pos + 1] * (1.f - color.w)) + ((color.y * 255.f) * color.w));
     framebuffer.color[pos + 2] = (uint8_t) ((framebuffer.color[pos + 2] * (1.f - color.w)) + ((color.z * 255.f) * color.w));
     framebuffer.color[pos + 3] = (uint8_t) color.w;
-
 }
 
 void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3)
@@ -267,7 +260,7 @@ void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInte
 
 }
 
-void rasterize(GPUMemory mem, Triangle* triangle, DrawCommand cmd)
+void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 {
     Frame frame = mem.framebuffer;
     Program prg = mem.programs[cmd.programID];
@@ -337,11 +330,46 @@ void rasterize(GPUMemory mem, Triangle* triangle, DrawCommand cmd)
     }
 }
 
+int clipping(Triangle* triangle)
+{
+    bool isInsideCameraMask[3];
+    isInsideCameraMask[0] = (-triangle->points[0].gl_Position.w) > triangle->points[0].gl_Position.z;
+    isInsideCameraMask[1] = (-triangle->points[1].gl_Position.w) > triangle->points[1].gl_Position.z;
+    isInsideCameraMask[2] = (-triangle->points[2].gl_Position.w) > triangle->points[2].gl_Position.z;
+
+    if (isInsideCameraMask[0] && isInsideCameraMask[1] && isInsideCameraMask[2])
+    {
+        // whole triangle is inside of camera, discard it.
+        return 0;
+    }
+    else if (!isInsideCameraMask[0] && !isInsideCameraMask[1] && !isInsideCameraMask[2])
+    {
+        // whole triangle is outside of camera, no clipping needed.
+        return 1;
+    }
+    // need to clip
+    return 2;
+}
+
 void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
 {
     for (size_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
         Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
+
+        switch (clipping(&triangle))
+        {
+            case 0:
+                // dont rasterize this triangle
+                continue;
+            case 1:
+                // one triangle to rasterize
+                break;
+            case 2:
+                // two triangles to rasterize
+                break;
+        }
+
         perspectiveDivision(&triangle);
         viewportTransformation(&triangle, mem.framebuffer.width, mem.framebuffer.height);
         rasterize(mem, &triangle, cmd);
