@@ -9,6 +9,57 @@
 
 ///\endcond
 
+DrawCommand createDrawCommand(Mesh* mesh)
+{
+	VertexArray vao;
+	vao.indexBufferID	= mesh->indexBufferID;
+	vao.indexOffset		= mesh->indexOffset	 ;
+	vao.indexType		= mesh->indexType	 ;
+	vao.vertexAttrib[0] = mesh->position	 ;
+	vao.vertexAttrib[1] = mesh->normal		 ;
+	vao.vertexAttrib[2] = mesh->texCoord	 ;
+
+	DrawCommand draw;
+	draw.backfaceCulling = !mesh->doubleSided;
+	draw.nofVertices	 = mesh->nofIndices ;
+	draw.programID		 = 0				;
+	draw.vao			 = vao				;
+
+	return draw;
+}
+
+void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node* node, glm::mat4 varMat)
+{
+	// process self
+	if (node->mesh != -1)
+	{
+		Mesh mesh = model.meshes[node->mesh];
+		
+		// create draw command
+		DrawCommand draw = createDrawCommand(&mesh);
+		if (commandBuffer.nofCommands + 1 < commandBuffer.maxCommands)
+		{
+			commandBuffer.commands[commandBuffer.nofCommands].type = CommandType::DRAW;
+			commandBuffer.commands[commandBuffer.nofCommands].data.drawCommand = draw;
+			commandBuffer.nofCommands++;
+		}
+
+		if (mesh.diffuseTexture != -1)
+		{
+			// mesh has texture
+
+		}
+
+	}
+
+	// process children
+	for each (Node child in node->children)
+	{
+		prepareNode(mem, commandBuffer, model, &child, varMat);
+	}
+}
+
+
 /**
  * @brief This function prepares model into memory and creates command buffer
  *
@@ -25,6 +76,24 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   /// Vaším úkolem je správně projít model a vložit vykreslovací příkazy do commandBufferu.
   /// Zároveň musíte vložit do paměti textury, buffery a uniformní proměnné, které buffer command buffer využívat.
   /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech.
+
+  mem.programs->fragmentShader = drawModel_fragmentShader;
+  mem.programs->vertexShader   = drawModel_vertexShader  ;
+
+  // add first clear command
+  ClearCommand clear;
+  clear.color = glm::vec4(0.1, 0.15, 0.1, 1);
+  clear.depth = 1e+11;
+
+  commandBuffer.commands[commandBuffer.nofCommands].type = CommandType::CLEAR;
+  commandBuffer.commands[commandBuffer.nofCommands].data.clearCommand = clear;
+  commandBuffer.nofCommands++;
+
+  for each (Node root in model.roots)
+  {
+	  prepareNode(mem, commandBuffer, model, &root, glm::mat4(1.f));
+  }
+
 }
 //! [drawModel]
 
