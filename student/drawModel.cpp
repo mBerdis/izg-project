@@ -30,6 +30,8 @@ DrawCommand createDrawCommand(Mesh* mesh)
 
 void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node* node, glm::mat4 varMat)
 {
+	glm::mat4 modelMat = varMat * node->modelMatrix;
+
 	// process self
 	if (node->mesh != -1)
 	{
@@ -44,21 +46,19 @@ void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& mode
 			commandBuffer.nofCommands++;
 		}
 
-		if (mesh.diffuseTexture != -1)
-		{
-			// mesh has texture
-
-		}
-
+		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 0].m4 = modelMat;
+		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 1].m4 = glm::inverse(modelMat);
+		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 2].v4 = mesh.diffuseColor;
+		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 3].i1 = mesh.diffuseTexture;
+		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 4].v1 = mesh.doubleSided;
 	}
 
 	// process children
 	for each (Node child in node->children)
 	{
-		prepareNode(mem, commandBuffer, model, &child, varMat);
+		prepareNode(mem, commandBuffer, model, &child, modelMat);
 	}
 }
-
 
 /**
  * @brief This function prepares model into memory and creates command buffer
@@ -76,9 +76,28 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   /// Vaším úkolem je správně projít model a vložit vykreslovací příkazy do commandBufferu.
   /// Zároveň musíte vložit do paměti textury, buffery a uniformní proměnné, které buffer command buffer využívat.
   /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech.
+  
+  int i = 0;
+  for each (Buffer buf in model.buffers)
+  {
+	  mem.buffers[i] = buf;
+	  i++;
+  }
+  i = 0;
+  for each (Texture tex in model.textures)
+  {
+	  mem.textures[i] = tex;
+	  i++;
+  }
 
-  mem.programs->fragmentShader = drawModel_fragmentShader;
-  mem.programs->vertexShader   = drawModel_vertexShader  ;
+  /// \todo do this other way
+  mem.programs[0].vs2fs[0] = AttributeType::VEC3;
+  mem.programs[0].vs2fs[1] = AttributeType::VEC3;
+  mem.programs[0].vs2fs[2] = AttributeType::VEC2;
+  mem.programs[0].vs2fs[3] = AttributeType::UINT;
+
+  mem.programs[0].fragmentShader = drawModel_fragmentShader;
+  mem.programs[0].vertexShader   = drawModel_vertexShader  ;
 
   // add first clear command
   ClearCommand clear;
