@@ -19,45 +19,33 @@ void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const&
     unsigned char* bytePtr = reinterpret_cast<unsigned char*>(const_cast<void*>(attribBuffer));
     bytePtr += attrib.offset + attrib.stride * vertexId;
 
-    if (attrib.type == AttributeType::UVEC2)
+    switch (attrib.type)
     {
-        glm::uvec2* ind = (glm::uvec2*)(bytePtr);
-        vertexAtrrib->u2 = *ind;
-    }
-    else if (attrib.type == AttributeType::UVEC3)
-    {
-        glm::uvec3 *ind = (glm::uvec3*)(bytePtr);
-        vertexAtrrib->u3 = *ind;
-    }
-    else if (attrib.type == AttributeType::UVEC4)
-    {
-        glm::uvec4* ind = (glm::uvec4*)(bytePtr);
-        vertexAtrrib->u4 = *ind;
-    }
-    else if (attrib.type == AttributeType::VEC4)
-    {
-        glm::vec4* ind = (glm::vec4*)(bytePtr);
-        vertexAtrrib->v4 = *ind;
-    }
-    else if (attrib.type == AttributeType::VEC3)
-    {
-        glm::vec3* ind = (glm::vec3*)(bytePtr);
-        vertexAtrrib->v3 = *ind;
-    }
-    else if (attrib.type == AttributeType::VEC2)
-    {
-        glm::vec2* ind = (glm::vec2*)(bytePtr);
-        vertexAtrrib->v2 = *ind;
-    }
-    else if (attrib.type == AttributeType::FLOAT)
-    {
-        float* ind = (float*)(bytePtr);
-        vertexAtrrib->v1 = *ind;
-    }
-    else if (attrib.type == AttributeType::UINT)
-    {
-        uint32_t* ind = (uint32_t*)(bytePtr);
-        vertexAtrrib->u1 = *ind;
+        case AttributeType::UVEC2:
+            vertexAtrrib->u2 = *((glm::uvec2*)(bytePtr));
+            break;
+        case AttributeType::UVEC3:
+            vertexAtrrib->u3 = *((glm::uvec3*)(bytePtr));
+            break;
+        case AttributeType::UVEC4:
+            vertexAtrrib->u4 = *((glm::uvec4*)(bytePtr));
+            break;
+        case AttributeType::VEC4:
+            vertexAtrrib->v4 = *((glm::vec4*)(bytePtr));
+            break;
+        case AttributeType::VEC3:
+            vertexAtrrib->v3 = *((glm::vec3*)(bytePtr));
+            break;
+        case AttributeType::VEC2:
+            vertexAtrrib->v2 = *((glm::vec2*)(bytePtr));
+            break;
+        case AttributeType::FLOAT:
+            vertexAtrrib->v1 = *((float*)(bytePtr));
+            break;
+        default:
+            // its UINT
+            vertexAtrrib->u1 = *((uint32_t*)(bytePtr));
+            break;
     }
 }
 
@@ -143,21 +131,23 @@ void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
 
 void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2, OutVertex p3, Program prg, size_t i, double l0, double l1, double l2)
 {
-    if (prg.vs2fs[i] == AttributeType::UINT)
+    // dont interpolate integer attribs
+    switch (prg.vs2fs[i])
     {
-        inFragment->attributes[i].u1 = p1.attributes[i].u1;
-    }
-    else if (prg.vs2fs[i] == AttributeType::UVEC2)
-    {
-        inFragment->attributes[i].u2 = p1.attributes[i].u2;
-    }
-    else if (prg.vs2fs[i] == AttributeType::UVEC3)
-    {
-        inFragment->attributes[i].u3 = p1.attributes[i].u3;
-    }
-    else if (prg.vs2fs[i] == AttributeType::UVEC4)
-    {
-        inFragment->attributes[i].u4 = p1.attributes[i].u4;
+        case AttributeType::UINT:
+            inFragment->attributes[i].u1 = p1.attributes[i].u1;
+            return;
+        case AttributeType::UVEC2:
+            inFragment->attributes[i].u2 = p1.attributes[i].u2;
+            return;
+        case AttributeType::UVEC3:
+            inFragment->attributes[i].u3 = p1.attributes[i].u3;
+            return;
+        case AttributeType::UVEC4:
+            inFragment->attributes[i].u4 = p1.attributes[i].u4;
+            return;
+        default:
+            break;
     }
 
     // interpolate
@@ -166,30 +156,28 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2
     l1 /= p2.gl_Position.w * s;
     l2 /= p3.gl_Position.w * s;
 
-    if (prg.vs2fs[i] == AttributeType::VEC4)
+    switch (prg.vs2fs[i])
     {
-        for (size_t vecI = 0; vecI < 4; vecI++)
-        {
-            inFragment->attributes[i].v4[vecI] = (p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2);
-        }
-    }
-    else if (prg.vs2fs[i] == AttributeType::VEC3)
-    {
-        for (size_t vecI = 0; vecI < 3; vecI++)
-        {
-            inFragment->attributes[i].v3[vecI] = (p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2);
-        }
-    }
-    else if (prg.vs2fs[i] == AttributeType::VEC2)
-    {
-        for (size_t vecI = 0; vecI < 2; vecI++)
-        {
-            inFragment->attributes[i].v2[vecI] = (p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2);
-        }
-    }
-    else if (prg.vs2fs[i] == AttributeType::FLOAT)
-    {
-        inFragment->attributes[i].v1 = 10.f;
+        case AttributeType::VEC4:
+            for (size_t vecI = 0; vecI < 4; vecI++){
+                inFragment->attributes[i].v4[vecI] = (p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2);
+            }
+            break;
+
+        case AttributeType::VEC3:
+            for (size_t vecI = 0; vecI < 3; vecI++){
+                inFragment->attributes[i].v3[vecI] = (p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2);
+            }
+            break;
+        case AttributeType::VEC2:
+            for (size_t vecI = 0; vecI < 2; vecI++){
+                inFragment->attributes[i].v2[vecI] = (p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2);
+            }
+            break;
+        default:
+            // its FLOAT
+            inFragment->attributes[i].v1 = (p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2);
+            break;
     }
 }
 
