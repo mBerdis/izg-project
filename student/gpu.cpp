@@ -67,7 +67,7 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
         uint16_t* ind = (uint16_t*)(bytePtr);
         return (uint32_t) ind[shaderInvocation];
     }
-    else if (vao.indexType == IndexType::UINT8)
+    else
     {
         uint8_t* ind = (uint8_t*)(bytePtr);
         return (uint32_t)ind[shaderInvocation];
@@ -90,7 +90,7 @@ Triangle primitiveAssembly(GPUMemory& mem, DrawCommand cmd, uint32_t drawID, uin
     Triangle triangle;
 
     uint32_t firstVertexIndex = triangleIndex * 3;
-    for (size_t i = firstVertexIndex; i < firstVertexIndex + 3; i++)
+    for (uint32_t i = firstVertexIndex; i < firstVertexIndex + 3; i++)
     {
         InVertex inVertex;
         OutVertex outVertex;
@@ -159,31 +159,31 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2
     switch (prg.vs2fs[i])
     {
         case AttributeType::VEC4:
-            for (size_t vecI = 0; vecI < 4; vecI++){
-                inFragment->attributes[i].v4[vecI] = (p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2);
+            for (int vecI = 0; vecI < 4; vecI++){
+                inFragment->attributes[i].v4[vecI] = (float) ((p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2));
             }
             break;
 
         case AttributeType::VEC3:
-            for (size_t vecI = 0; vecI < 3; vecI++){
-                inFragment->attributes[i].v3[vecI] = (p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2);
+            for (int vecI = 0; vecI < 3; vecI++){
+                inFragment->attributes[i].v3[vecI] = (float) ((p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2));
             }
             break;
         case AttributeType::VEC2:
-            for (size_t vecI = 0; vecI < 2; vecI++){
-                inFragment->attributes[i].v2[vecI] = (p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2);
+            for (int vecI = 0; vecI < 2; vecI++){
+                inFragment->attributes[i].v2[vecI] = (float) ((p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2));
             }
             break;
         default:
             // its FLOAT
-            inFragment->attributes[i].v1 = (p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2);
+            inFragment->attributes[i].v1 = (float) ((p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2));
             break;
     }
 }
 
-float triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, float dY2)
+double triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, float dY2)
 {
-    float dArea = ((dX1 - dX0) * (dY2 - dY0) - (dX2 - dX0) * (dY1 - dY0)) / 2.0;
+    double dArea = ((dX1 - dX0) * (dY2 - dY0) - (dX2 - dX0) * (dY1 - dY0)) / 2.0;
     return (dArea > 0.0) ? dArea : -dArea;
 }
 
@@ -192,7 +192,7 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
     x = x - 0.5f;
     y = y - 0.5f;
 
-    int pixelPos = (x + y * framebuffer.width);
+    int pixelPos = (int)(x + y * framebuffer.width);
 
     if (depth >= framebuffer.depth[pixelPos])
     {
@@ -223,12 +223,11 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
 
 void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3)
 {
-    float area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
-    float l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
-    float l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
-    //float l2 = triangleArea2D(p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
-    float l2 = 1.f - (l0 + l1);
-    float depth = p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2;
+    double area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
+    double l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
+    double l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
+    double l2 = 1.f - (l0 + l1);
+    float depth = (float) (p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2);
 
     InFragment inFragment;
     inFragment.gl_FragCoord.x = x;
@@ -292,7 +291,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 
         for (float x = min_x + 0.5f; x < max_x; x++)
         {
-            // check for CCW triangles 
+            // check for CCW triangles
             // t1 >= 0 && t2 > 0 && t3 >= 0 TO PASS THE TESTS
             if (t1 >= 0 && t2 > 0 && t3 >= 0)
             {
@@ -406,7 +405,7 @@ int clipping(Triangle* triangle, Triangle* secondTriangle, Program prg)
         triangle->points[2] = secondTriangle->points[1];                    // change point of first triangle to second intersection
         return 2;
     }
-    else if (isInsideCameraMask[2])
+    else
     {
         // Points 0, 1 OK (not inside)
         memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
@@ -420,7 +419,7 @@ int clipping(Triangle* triangle, Triangle* secondTriangle, Program prg)
 
 void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
 {
-    for (size_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
+    for (uint32_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
         Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
         Triangle secondTriangle;
