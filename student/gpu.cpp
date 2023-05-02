@@ -65,12 +65,12 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
     else if (vao.indexType == IndexType::UINT16)
     {
         uint16_t* ind = (uint16_t*)(bytePtr);
-        return ind[shaderInvocation];
+        return (uint32_t) ind[shaderInvocation];
     }
     else if (vao.indexType == IndexType::UINT8)
     {
         uint8_t* ind = (uint8_t*)(bytePtr);
-        return ind[shaderInvocation];
+        return (uint32_t)ind[shaderInvocation];
     }
 }
 
@@ -202,23 +202,23 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
     }
 
     glm::vec4 color = outFragment.gl_FragColor;
-    color.x = glm::clamp(color.x, 0.f, 1.f);    // r
-    color.y = glm::clamp(color.y, 0.f, 1.f);    // g
-    color.z = glm::clamp(color.z, 0.f, 1.f);    // b
-    color.w = glm::clamp(color.w, 0.f, 1.f);    // alpha
+    color.r = glm::clamp(color.r, 0.f, 1.f);    // r
+    color.g = glm::clamp(color.g, 0.f, 1.f);    // g
+    color.b = glm::clamp(color.b, 0.f, 1.f);    // b
+    color.a = glm::clamp(color.a, 0.f, 1.f);    // alpha
 
     int pos = pixelPos * framebuffer.channels;
 
     // update depth only if alpha is > 0.5f
-    if (color.w > 0.5f)
+    if (color.a > 0.5f)
     {
         framebuffer.depth[pixelPos] = depth;
     }
 
-    framebuffer.color[pos + 0] = (uint8_t) ((framebuffer.color[pos + 0] * (1.f - color.w)) + ((color.x * 255.f) * color.w));
-    framebuffer.color[pos + 1] = (uint8_t) ((framebuffer.color[pos + 1] * (1.f - color.w)) + ((color.y * 255.f) * color.w));
-    framebuffer.color[pos + 2] = (uint8_t) ((framebuffer.color[pos + 2] * (1.f - color.w)) + ((color.z * 255.f) * color.w));
-    framebuffer.color[pos + 3] = (uint8_t) color.w;
+    framebuffer.color[pos + 0] = (uint8_t) ((framebuffer.color[pos + 0] * (1.f - color.a)) + ((color.r * 255.f) * color.a));
+    framebuffer.color[pos + 1] = (uint8_t) ((framebuffer.color[pos + 1] * (1.f - color.a)) + ((color.g * 255.f) * color.a));
+    framebuffer.color[pos + 2] = (uint8_t) ((framebuffer.color[pos + 2] * (1.f - color.a)) + ((color.b * 255.f) * color.a));
+    framebuffer.color[pos + 3] = (uint8_t) color.a;
 }
 
 void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3)
@@ -244,7 +244,7 @@ void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInte
     OutFragment outFragrament;
     prg.fragmentShader(outFragrament, inFragment, si);
 
-    perFragmentOperations(frame, outFragrament, depth, x ,y);
+    perFragmentOperations(frame, outFragrament, inFragment.gl_FragCoord.z, x ,y);
 
 }
 
@@ -272,13 +272,13 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     glm::vec2 dirVec3 = glm::vec2(triangle->points[0].gl_Position.x - triangle->points[2].gl_Position.x, triangle->points[0].gl_Position.y - triangle->points[2].gl_Position.y);
 
     // E1 = (min_y - point[0].y) * dirVec1.x - (min_x - point[0].x) * dirVec1.y
-    int32_t E1 = (min_y - triangle->points[0].gl_Position.y) * dirVec1.x - (min_x - triangle->points[0].gl_Position.x) * dirVec1.y;
+    float E1 = (min_y - triangle->points[0].gl_Position.y) * dirVec1.x - (min_x - triangle->points[0].gl_Position.x) * dirVec1.y;
 
     // E2 = (min_y - point[1].y) * dirVec2.x - (min_x - point[1].x) * dirVec2.y
-    int32_t E2 = (min_y - triangle->points[1].gl_Position.y) * dirVec2.x - (min_x - triangle->points[1].gl_Position.x) * dirVec2.y;
+    float E2 = (min_y - triangle->points[1].gl_Position.y) * dirVec2.x - (min_x - triangle->points[1].gl_Position.x) * dirVec2.y;
 
     // E3 = (min_y - point[2].y) * dirVec3.x - (min_x - point[2].x) * dirVec3.y
-    int32_t E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
+    float E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
 
     ShaderInterface si;
     si.uniforms = mem.uniforms;
@@ -286,15 +286,15 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 
     for (float y = min_y + 0.5f; y < max_y; y++)
     {
-        int32_t t1 = E1;
-        int32_t t2 = E2;
-        int32_t t3 = E3;
+        float t1 = E1;
+        float t2 = E2;
+        float t3 = E3;
 
         for (float x = min_x + 0.5f; x < max_x; x++)
         {
             // check for CCW triangles 
-            // scuffed >= because of tests
-            if (t1 > 0 && t2 > 0 && t3 >= 0)
+            // t1 >= 0 && t2 > 0 && t3 >= 0 TO PASS THE TESTS
+            if (t1 >= 0 && t2 > 0 && t3 >= 0)
             {
                 loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
             }
