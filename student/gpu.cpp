@@ -11,7 +11,7 @@ struct Triangle {
     OutVertex points[3];
 };
 
-void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const& attrib, uint32_t shaderInvocation, uint32_t vertexId)
+void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const& attrib, uint32_t vertexId)
 {
     if (attrib.type == AttributeType::EMPTY) return;
 
@@ -80,7 +80,7 @@ void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& va
     
     for (size_t i = 0; i < maxAttributes; i++)
     {
-        readAttributes(&inVertex->attributes[i], mem, vao.vertexAttrib[i], shaderInvocation, inVertex->gl_VertexID);
+        readAttributes(&inVertex->attributes[i], mem, vao.vertexAttrib[i], inVertex->gl_VertexID);
     }
 }
 
@@ -124,8 +124,8 @@ void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
 {
     for (size_t i = 0; i < 3; i++)
     {
-        triangle->points[i].gl_Position.x = (triangle->points[i].gl_Position.x + 1.0f) * width * 0.5f;
-        triangle->points[i].gl_Position.y = (triangle->points[i].gl_Position.y + 1.0f) * height * 0.5f;
+        triangle->points[i].gl_Position.x = ((triangle->points[i].gl_Position.x + 1.0f) / 2.f) * width;
+        triangle->points[i].gl_Position.y = ((triangle->points[i].gl_Position.y + 1.0f) / 2.f) * height;
     }
 }
 
@@ -318,7 +318,35 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     }
 }
 
-int clipping(Triangle* triangle)
+void cutEdge(OutVertex* a, OutVertex b, Program prg)
+{
+    float t = (-a->gl_Position.w - a->gl_Position.z) / (b.gl_Position.w - a->gl_Position.w + b.gl_Position.z - a->gl_Position.z);
+    
+    a->gl_Position = a->gl_Position + t * (b.gl_Position - a->gl_Position);
+
+    for (uint32_t i = 0; i < maxAttributes; i++)
+    {
+        switch (prg.vs2fs[i])
+        {
+            case AttributeType::FLOAT:
+                a->attributes[i].v1 = a->attributes[i].v1 + t * (b.attributes[i].v1 - a->attributes[i].v1);
+                continue;
+            case AttributeType::VEC2:
+                a->attributes[i].v2 = a->attributes[i].v2 + t * (b.attributes[i].v2 - a->attributes[i].v2);
+                continue;
+            case AttributeType::VEC3:
+                a->attributes[i].v3 = a->attributes[i].v3 + t * (b.attributes[i].v3 - a->attributes[i].v3);
+                continue;
+            case AttributeType::VEC4:
+                a->attributes[i].v4 = a->attributes[i].v4 + t * (b.attributes[i].v4 - a->attributes[i].v4);
+                continue;
+            default:
+                break;
+        }
+    }
+}
+
+int clipping(Triangle* triangle, Triangle* secondTriangle, Program prg)
 {
     bool isInsideCameraMask[3];
     isInsideCameraMask[0] = (-triangle->points[0].gl_Position.w) > triangle->points[0].gl_Position.z;
@@ -335,8 +363,59 @@ int clipping(Triangle* triangle)
         // whole triangle is outside of camera, no clipping needed.
         return 1;
     }
-    // need to clip
-    return 2;
+
+    // CLIPPING NEEDED
+    if (!isInsideCameraMask[0] && isInsideCameraMask[1] && isInsideCameraMask[2])
+    {
+        // Point 0 OK (is not inside)
+        cutEdge(&triangle->points[1], triangle->points[0], prg);  // change point 1
+        cutEdge(&triangle->points[2], triangle->points[0], prg);  // change point 2
+        return 1;
+    }
+    else if (isInsideCameraMask[0] && !isInsideCameraMask[1] && isInsideCameraMask[2])
+    {
+        // Point 1 OK (is not inside)
+        cutEdge(&triangle->points[0], triangle->points[1], prg);  // change point 0
+        cutEdge(&triangle->points[2], triangle->points[1], prg);  // change point 2
+        return 1;
+    }
+    else if (isInsideCameraMask[0] && isInsideCameraMask[1] && !isInsideCameraMask[2])
+    {
+        // Point 2 OK (is not inside)
+        cutEdge(&triangle->points[0], triangle->points[2], prg);  // change point 0
+        cutEdge(&triangle->points[1], triangle->points[2], prg);  // change point 1
+        return 1;
+    }
+    else if (isInsideCameraMask[0])
+    {
+        // Points 1, 2 OK (not inside)
+        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+
+        cutEdge(&triangle->points[0], triangle->points[1], prg);             // change point 0
+        cutEdge(&secondTriangle->points[0], secondTriangle->points[2], prg); // change point 0 of second triangle
+        triangle->points[2] = secondTriangle->points[0];                    // change point of first triangle to second intersection
+        return 2;
+    }
+    else if (isInsideCameraMask[1])
+    {
+        // Points 0, 2 OK (not inside)
+        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+
+        cutEdge(&triangle->points[1], triangle->points[0], prg);             // change point 1
+        cutEdge(&secondTriangle->points[1], secondTriangle->points[2], prg); // change point 1 of second triangle
+        triangle->points[2] = secondTriangle->points[1];                    // change point of first triangle to second intersection
+        return 2;
+    }
+    else if (isInsideCameraMask[2])
+    {
+        // Points 0, 1 OK (not inside)
+        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+
+        cutEdge(&triangle->points[2], triangle->points[0], prg);             // change point 2
+        cutEdge(&secondTriangle->points[2], secondTriangle->points[1], prg); // change point 2 of second triangle
+        triangle->points[1] = secondTriangle->points[2];                    // change point of first triangle to second intersection
+        return 2;
+    }
 }
 
 void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
@@ -344,8 +423,9 @@ void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID)
     for (size_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
         Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
+        Triangle secondTriangle;
 
-        switch (clipping(&triangle))
+        switch (clipping(&triangle, &secondTriangle, mem.programs[cmd.programID]))
         {
             case 0:
                 // dont rasterize this triangle
@@ -355,6 +435,9 @@ void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID)
                 break;
             case 2:
                 // two triangles to rasterize
+                perspectiveDivision(&secondTriangle);
+                viewportTransformation(&secondTriangle, mem.framebuffer.width, mem.framebuffer.height);
+                rasterize(mem, &secondTriangle, cmd);
                 break;
         }
 

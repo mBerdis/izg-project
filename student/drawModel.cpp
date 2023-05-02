@@ -90,7 +90,7 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
 	  i++;
   }
 
-  /// \todo do this other way
+  /// \todo do this other way maybe
   mem.programs[0].vs2fs[0] = AttributeType::VEC3;
   mem.programs[0].vs2fs[1] = AttributeType::VEC3;
   mem.programs[0].vs2fs[2] = AttributeType::VEC2;
