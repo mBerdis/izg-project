@@ -53,25 +53,16 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
 {
     if (vao.indexBufferID < 0) return shaderInvocation;
 
-    const void* indexBuffer = mem.buffers[vao.indexBufferID].data;
-    unsigned char* bytePtr = reinterpret_cast<unsigned char*>(const_cast<void*>(indexBuffer));
-    bytePtr += vao.indexOffset;
-
-    if (vao.indexType == IndexType::UINT32)
+    uint8_t* ind = (uint8_t*) mem.buffers[vao.indexBufferID].data + vao.indexOffset;
+    switch (vao.indexType)
     {
-        uint32_t* ind = (uint32_t*)(bytePtr);
-        return ind[shaderInvocation];
-    }
-    else if (vao.indexType == IndexType::UINT16)
-    {
-        uint16_t* ind = (uint16_t*)(bytePtr);
-        return (uint32_t) ind[shaderInvocation];
-    }
-    else
-    {
-        uint8_t* ind = (uint8_t*)(bytePtr);
-        return (uint32_t)ind[shaderInvocation];
-    }
+    case IndexType::UINT8:
+        return ((uint8_t*)ind)[shaderInvocation];
+    case IndexType::UINT16:
+        return ((uint16_t*)ind)[shaderInvocation];
+    default:
+        return ((uint32_t*)ind)[shaderInvocation];
+    }      
 }
 
 void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& vao, uint32_t shaderInvocation)
