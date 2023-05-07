@@ -11,7 +11,7 @@ struct Triangle {
     OutVertex points[3];
 };
 
-void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib const& attrib, uint32_t vertexId)
+void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib attrib, uint32_t vertexId)
 {
     if (attrib.type == AttributeType::EMPTY) return;
 
@@ -68,7 +68,7 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
 void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& vao, uint32_t shaderInvocation)
 {
     inVertex->gl_VertexID = computeVertexID(mem, vao, shaderInvocation);
-    
+
     for (size_t i = 0; i < maxAttributes; i++)
     {
         readAttributes(&inVertex->attributes[i], mem, vao.vertexAttrib[i], inVertex->gl_VertexID);
@@ -94,6 +94,7 @@ Triangle primitiveAssembly(GPUMemory& mem, DrawCommand cmd, uint32_t drawID, uin
         si.textures = mem.textures;
 
         prg.vertexShader(outVertex, inVertex, si);
+        
         triangle.points[i % 3] = outVertex;
     }
 
@@ -178,7 +179,7 @@ double triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, flo
     return (dArea > 0.0) ? dArea : -dArea;
 }
 
-void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float depth, float x, float y)
+void perFragmentOperations(Frame& framebuffer, OutFragment outFragment, float depth, float x, float y)
 {
     x = x - 0.5f;
     y = y - 0.5f;
@@ -187,7 +188,6 @@ void perFragmentOperations(Frame framebuffer, OutFragment outFragment, float dep
 
     if (depth >= framebuffer.depth[pixelPos])
     {
-        //printf("DISCARD (%f, %f)\n", depth, framebuffer.depth[pixelPos]);
         // discard fragment
         return;
     }
@@ -240,6 +240,10 @@ void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInte
 
 void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 {
+    // check if all points of the triangle are same
+    if (triangle->points[0].gl_Position == triangle->points[1].gl_Position && triangle->points[1].gl_Position == triangle->points[2].gl_Position)
+        return;
+
     Frame frame = mem.framebuffer;
     Program prg = mem.programs[cmd.programID];
     // bounding box
@@ -249,10 +253,10 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     float max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
     float max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
 
-    min_x = glm::max(min_x, 0.f);
-    min_y = glm::max(min_y, 0.f);
-    max_x = glm::min(max_x, (float) (frame.width));
-    max_y = glm::min(max_y, (float) (frame.height));
+    min_x = round(glm::max(min_x, 0.f));
+    min_y = round(glm::max(min_y, 0.f));
+    max_x = round(glm::min(max_x, (float) (frame.width)));
+    max_y = round(glm::min(max_y, (float) (frame.height)));
 
     // point[1] - point[0]
     glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
@@ -329,6 +333,18 @@ void cutEdge(OutVertex* a, OutVertex b, Program prg)
                 continue;
             case AttributeType::VEC4:
                 a->attributes[i].v4 = a->attributes[i].v4 + t * (b.attributes[i].v4 - a->attributes[i].v4);
+                continue;
+            case AttributeType::UINT:
+                a->attributes[i].u1 = (uint32_t) (a->attributes[i].u1 + t * (b.attributes[i].u1 - a->attributes[i].u1));
+                continue;
+            case AttributeType::UVEC2:
+                a->attributes[i].u2 = a->attributes[i].u2 + (uint32_t) t * (b.attributes[i].u2 - a->attributes[i].u2);
+                continue;
+            case AttributeType::UVEC3:
+                a->attributes[i].u3 = a->attributes[i].u3 + (uint32_t) t * (b.attributes[i].u3 - a->attributes[i].u3);
+                continue;
+            case AttributeType::UVEC4:
+                a->attributes[i].u4 = a->attributes[i].u4 + (uint32_t)t * (b.attributes[i].u4 - a->attributes[i].u4);
                 continue;
             default:
                 break;
