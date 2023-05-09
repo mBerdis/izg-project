@@ -121,7 +121,7 @@ void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
     }
 }
 
-void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2, OutVertex p3, Program prg, size_t i, double l0, double l1, double l2)
+void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2, OutVertex p3, Program prg, size_t i, double l0, float l1, float l2)
 {
     // dont interpolate integer attribs
     switch (prg.vs2fs[i])
@@ -143,7 +143,7 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2
     }
 
     // interpolate
-    double s = (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w) + (l2 / p3.gl_Position.w);
+    float s = (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w) + (l2 / p3.gl_Position.w);
     l0 /= p1.gl_Position.w * s;
     l1 /= p2.gl_Position.w * s;
     l2 /= p3.gl_Position.w * s;
@@ -173,9 +173,9 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2
     }
 }
 
-double triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, float dY2)
+float triangleArea2D(float dX0, float dY0, float dX1, float dY1, float dX2, float dY2)
 {
-    double dArea = ((dX1 - dX0) * (dY2 - dY0) - (dX2 - dX0) * (dY1 - dY0)) / 2.0;
+    float dArea = ((dX1 - dX0) * (dY2 - dY0) - (dX2 - dX0) * (dY1 - dY0)) / 2.0f;
     return (dArea > 0.0) ? dArea : -dArea;
 }
 
@@ -214,10 +214,10 @@ void perFragmentOperations(Frame& framebuffer, OutFragment outFragment, float de
 
 void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3)
 {
-    double area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
-    double l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
-    double l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
-    double l2 = 1.f - (l0 + l1);
+    float area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
+    float l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
+    float l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
+    float l2 = 1.f - (l0 + l1);
     float depth = (float) (p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2);
 
     InFragment inFragment;
@@ -234,7 +234,7 @@ void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInte
     OutFragment outFragrament;
     prg.fragmentShader(outFragrament, inFragment, si);
 
-    perFragmentOperations(frame, outFragrament, inFragment.gl_FragCoord.z, x ,y);
+    perFragmentOperations(frame, outFragrament, depth, x ,y);
 
 }
 
@@ -246,6 +246,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 
     Frame frame = mem.framebuffer;
     Program prg = mem.programs[cmd.programID];
+
     // bounding box
     float min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
     float min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
@@ -253,10 +254,10 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     float max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
     float max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
 
-    min_x = round(glm::max(min_x, 0.f));
-    min_y = round(glm::max(min_y, 0.f));
-    max_x = round(glm::min(max_x, (float) (frame.width)));
-    max_y = round(glm::min(max_y, (float) (frame.height)));
+    min_x = (int) (glm::max(min_x, 0.f)) + 0.5f;
+    min_y = (int) (glm::max(min_y, 0.f)) + 0.5f;
+    max_x = (int) (glm::min(max_x + 1.f, (float) (frame.width)));
+    max_y = (int) (glm::min(max_y + 1.f, (float) (frame.height)));
 
     // point[1] - point[0]
     glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
@@ -278,13 +279,13 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     si.uniforms = mem.uniforms;
     si.textures = mem.textures;
 
-    for (float y = min_y + 0.5f; y < max_y; y++)
+    for (float y = min_y; y < max_y; y++)
     {
         float t1 = E1;
         float t2 = E2;
         float t3 = E3;
 
-        for (float x = min_x + 0.5f; x < max_x; x++)
+        for (float x = min_x; x < max_x; x++)
         {
             // check for CCW triangles
             // t1 >= 0 && t2 > 0 && t3 >= 0 TO PASS THE TESTS
