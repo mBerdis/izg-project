@@ -6,6 +6,7 @@
  */
 
 #include <student/gpu.hpp>
+#include <cstring>
 
 struct Triangle {
     OutVertex points[3];
@@ -212,11 +213,12 @@ void perFragmentOperations(Frame& framebuffer, OutFragment outFragment, float de
     framebuffer.color[pos + 3] = (uint8_t) color.a;
 }
 
-void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3)
+void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3, float area, float area1, float area2, float area3)
 {
-    float area = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y);
     float l0 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p2.gl_Position.x, p2.gl_Position.y, x, y) / area;
     float l1 = triangleArea2D(p3.gl_Position.x, p3.gl_Position.y, p1.gl_Position.x, p1.gl_Position.y, x, y) / area;
+    //float l0 = area2 / area;
+    //float l1 = area3 / area;
     float l2 = 1.f - (l0 + l1);
     float depth = (float) (p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2);
 
@@ -275,6 +277,9 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     // E3 = (min_y - point[2].y) * dirVec3.x - (min_x - point[2].x) * dirVec3.y
     float E3 = (min_y - triangle->points[2].gl_Position.y) * dirVec3.x - (min_x - triangle->points[2].gl_Position.x) * dirVec3.y;
 
+    // calculate area of whole triangle
+    float triangleArea = triangleArea2D(triangle->points[2].gl_Position.x, triangle->points[2].gl_Position.y, triangle->points[1].gl_Position.x, triangle->points[1].gl_Position.y, triangle->points[0].gl_Position.x, triangle->points[0].gl_Position.y);
+
     ShaderInterface si;
     si.uniforms = mem.uniforms;
     si.textures = mem.textures;
@@ -291,14 +296,14 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
             // t1 >= 0 && t2 > 0 && t3 >= 0 TO PASS THE TESTS
             if (t1 >= 0 && t2 > 0 && t3 >= 0)
             {
-                loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
+                loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t1, t2, t3);
             }
             else if (!cmd.backfaceCulling)
             {
                 // check for CW triangles
                 if (t1 <= 0 && t2 <= 0 && t3 <= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2]);
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t1, t2, t3);
                 }
             }
                 

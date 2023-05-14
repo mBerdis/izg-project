@@ -54,7 +54,7 @@ void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& mode
 	}
 
 	// process children
-	for each (Node child in node->children)
+	for (Node child : node->children)
 	{
 		prepareNode(mem, commandBuffer, model, &child, modelMat);
 	}
@@ -78,13 +78,13 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech.
   
   int i = 0;
-  for each (Buffer buf in model.buffers)
+  for (Buffer buf : model.buffers)
   {
 	  mem.buffers[i] = buf;
 	  i++;
   }
   i = 0;
-  for each (Texture tex in model.textures)
+  for (Texture tex : model.textures)
   {
 	  mem.textures[i] = tex;
 	  i++;
@@ -108,7 +108,7 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   commandBuffer.commands[commandBuffer.nofCommands].data.clearCommand = clear;
   commandBuffer.nofCommands++;
 
-  for each (Node root in model.roots)
+  for (Node root : model.roots)
   {
 	  prepareNode(mem, commandBuffer, model, &root, glm::mat4(1.f));
   }
