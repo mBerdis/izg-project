@@ -237,4 +237,9 @@
       <UniqueIdentifier>{3B7736E2-8AEC-32BD-AEDA-323359703F32}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="pineda.txt">
+      <Filter>student</Filter>
+    </Text>
+  </ItemGroup>
 </Project>
