@@ -237,15 +237,29 @@ float edgeFunction(const OutVertex& a, const OutVertex& b, const OutVertex& c)
     return (c.gl_Position.x - a.gl_Position.x) * (b.gl_Position.y - a.gl_Position.y) - (c.gl_Position.y - a.gl_Position.y) * (b.gl_Position.x - a.gl_Position.x);
 }
 
+bool isFacingCamera(glm::vec3& cameraPos, glm::vec3& vertexNorm)
+{
+    return glm::dot(vertexNorm, cameraPos) > 0;
+}
+
 void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
 {
     // check if all points of the triangle are same
     if (triangle->points[0].gl_Position == triangle->points[1].gl_Position && triangle->points[1].gl_Position == triangle->points[2].gl_Position)
         return;
 
+    bool isFacingCam =  isFacingCamera(mem.uniforms[2].v3, triangle->points[0].attributes[1].v3) || 
+                        isFacingCamera(mem.uniforms[2].v3, triangle->points[1].attributes[1].v3) || 
+                        isFacingCamera(mem.uniforms[2].v3, triangle->points[2].attributes[1].v3);
+
+    // check if triangle is facing a camera, if not discard it.
+    if (!isFacingCam && cmd.backfaceCulling)
+        return;
+
     Frame frame = mem.framebuffer;
     Program prg = mem.programs[cmd.programID];
 
+    ////////////////////////////////////////////////////////////////
     // bounding box
     float min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
     float min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
@@ -257,7 +271,10 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     min_y = (int) (glm::max(min_y, 0.f)) + 0.5f;
     max_x = (int) (glm::min(max_x + 1.f, (float) (frame.width)));
     max_y = (int) (glm::min(max_y + 1.f, (float) (frame.height)));
+    ////////////////////////////////////////////////////////////////
 
+
+    ////////////////////////////////////////////////////////////////
     // point[1] - point[0]
     glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
     // point[2] - point[1]
@@ -269,6 +286,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     float E1 = ((min_y - triangle->points[0].gl_Position.y) * dirVec1.x) - ((min_x - triangle->points[0].gl_Position.x) * dirVec1.y);
     float E2 = ((min_y - triangle->points[1].gl_Position.y) * dirVec2.x) - ((min_x - triangle->points[1].gl_Position.x) * dirVec2.y);
     float E3 = ((min_y - triangle->points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle->points[2].gl_Position.x) * dirVec3.y);
+    ////////////////////////////////////////////////////////////////
 
     // calculate area of whole triangle
     float triangleArea = abs(edgeFunction(triangle->points[0], triangle->points[1], triangle->points[2]));
@@ -277,37 +295,74 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     si.uniforms = mem.uniforms;
     si.textures = mem.textures;
 
-    for (float y = min_y; y < max_y; y++)
+    if (cmd.backfaceCulling)
     {
-        float t1 = E1;
-        float t2 = E2;
-        float t3 = E3;
-
-        for (float x = min_x; x < max_x; x++)
+        for (float y = min_y; y < max_y; y++)
         {
-            // check for CCW triangles
-            // t1 >= 0 && t2 > 0 && t3 >= 0 TO PASS THE TESTS
-            if (t1 >= 0 && t2 > 0 && t3 >= 0)
+            float t1 = E1;
+            float t2 = E2;
+            float t3 = E3;
+            bool insideTriangle = false;
+
+            for (float x = min_x; x < max_x; x++)
             {
-                loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t2, t3);
+                if (t1 >= 0 && t2 > 0 && t3 >= 0)
+                {
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t2, t3);
+                    insideTriangle = true;
+                }
+                else if (insideTriangle)
+                {
+                    // got out of triangle
+                    break;
+                }
+                    
+                t1 -= dirVec1.y;
+                t2 -= dirVec2.y;
+                t3 -= dirVec3.y;
             }
-            else if (!cmd.backfaceCulling)
+
+            E1 += dirVec1.x;
+            E2 += dirVec2.x;
+            E3 += dirVec3.x;
+        }
+    }
+    else
+    {
+        for (float y = min_y; y < max_y; y++)
+        {
+            float t1 = E1;
+            float t2 = E2;
+            float t3 = E3;
+            bool insideTriangle = false;
+            
+            for (float x = min_x; x < max_x; x++)
             {
-                // check for CW triangles
                 if (t1 <= 0 && t2 <= 0 && t3 <= 0)
                 {
                     loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(t2), abs(t3));
+                    insideTriangle = true;
                 }
-            }
-                
-            t1 -= dirVec1.y;
-            t2 -= dirVec2.y;
-            t3 -= dirVec3.y;
-        }
+                else if (t1 >= 0 && t2 > 0 && t3 >= 0)
+                {
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t2, t3);
+                    insideTriangle = true;
+                }
+                else if (insideTriangle)
+                {
+                    // didnt rasterize a current pixel, but did previous
+                    break;
+                }
 
-        E1 += dirVec1.x;
-        E2 += dirVec2.x;
-        E3 += dirVec3.x;
+                t1 -= dirVec1.y;
+                t2 -= dirVec2.y;
+                t3 -= dirVec3.y;
+            }
+
+            E1 += dirVec1.x;
+            E2 += dirVec2.x;
+            E3 += dirVec3.x;
+        }
     }
 }
 
@@ -454,6 +509,17 @@ void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID)
 
 void clear(GPUMemory& mem, ClearCommand cmd) {
     if (cmd.clearColor) {
+        uint32_t combinedValue = 0;
+        combinedValue |= ((uint32_t)(cmd.color.r * 255.f));
+        combinedValue |= ((uint32_t)(cmd.color.g * 255.f)) << 8;
+        combinedValue |= ((uint32_t)(cmd.color.b * 255.f)) << 16;
+        combinedValue |= ((uint32_t)(cmd.color.a * 255.f)) << 24;
+
+        uint32_t* arr = reinterpret_cast<uint32_t*>(mem.framebuffer.color);
+
+        size_t colorBuffLenght = mem.framebuffer.width * mem.framebuffer.height;
+        std::fill_n(arr, colorBuffLenght, combinedValue);
+        /*
         uint8_t red     = (uint8_t) (cmd.color.r * 255.f);
         uint8_t green   = (uint8_t) (cmd.color.g * 255.f);
         uint8_t blue    = (uint8_t) (cmd.color.b * 255.f);
@@ -467,14 +533,16 @@ void clear(GPUMemory& mem, ClearCommand cmd) {
             mem.framebuffer.color[i + 2]    = blue ;
             mem.framebuffer.color[i + 3]    = alpha;
         }
+        */
     }
     if (cmd.clearDepth)
     {
-        size_t depthBuffLenght = mem.framebuffer.width * mem.framebuffer.height;
-        for (size_t i = 0; i < depthBuffLenght; i++)
-        {
-            mem.framebuffer.depth[i] = cmd.depth;
-        }
+        std::fill_n(mem.framebuffer.depth, mem.framebuffer.width * mem.framebuffer.height, cmd.depth);
+        //size_t depthBuffLenght = mem.framebuffer.width * mem.framebuffer.height;
+        //for (size_t i = 0; i < depthBuffLenght; i++)
+        //{
+        //    mem.framebuffer.depth[i] = cmd.depth;
+        //}
     }
 }
 

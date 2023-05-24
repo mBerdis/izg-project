@@ -46,11 +46,12 @@ void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& mode
 			commandBuffer.nofCommands++;
 		}
 
-		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 0].m4 = modelMat;
-		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 1].m4 = glm::transpose(glm::inverse(modelMat));
-		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 2].v4 = mesh.diffuseColor;
-		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 3].i1 = mesh.diffuseTexture;
-		mem.uniforms[10 + (commandBuffer.nofCommands - 2) * 5 + 4].v1 = mesh.doubleSided;
+		const int index = 10 + (commandBuffer.nofCommands - 2) * 5;
+		mem.uniforms[index + 0].m4 = modelMat;
+		mem.uniforms[index + 1].m4 = glm::transpose(glm::inverse(modelMat));
+		mem.uniforms[index + 2].v4 = mesh.diffuseColor;
+		mem.uniforms[index + 3].i1 = mesh.diffuseTexture;
+		mem.uniforms[index + 4].v1 = mesh.doubleSided;
 	}
 
 	// process children
@@ -78,19 +79,18 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech.
   
   int i = 0;
-  for (Buffer buf : model.buffers)
+  for (Buffer const buf : model.buffers)
   {
 	  mem.buffers[i] = buf;
 	  i++;
   }
   i = 0;
-  for (Texture tex : model.textures)
+  for (Texture const tex : model.textures)
   {
 	  mem.textures[i] = tex;
 	  i++;
   }
 
-  /// \todo do this other way maybe
   mem.programs[0].vs2fs[0] = AttributeType::VEC3;
   mem.programs[0].vs2fs[1] = AttributeType::VEC3;
   mem.programs[0].vs2fs[2] = AttributeType::VEC2;
@@ -99,10 +99,10 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
   mem.programs[0].fragmentShader = drawModel_fragmentShader;
   mem.programs[0].vertexShader   = drawModel_vertexShader  ;
 
-  // add first clear command
+  // adding first clear command
   ClearCommand clear;
-  clear.color = glm::vec4(0.1, 0.15, 0.1, 1);
-  clear.depth = 1e+11;
+  clear.color = glm::vec4(0.1f, 0.15f, 0.1f, 1.f);
+  clear.depth = 1e+11f;
 
   commandBuffer.commands[commandBuffer.nofCommands].type = CommandType::CLEAR;
   commandBuffer.commands[commandBuffer.nofCommands].data.clearCommand = clear;
@@ -124,19 +124,29 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
  * @param si shader interface
  */
 //! [drawModel_vs]
-void drawModel_vertexShader(OutVertex&outVertex,InVertex const&inVertex,ShaderInterface const&si){
-	(void)outVertex;
-	(void)inVertex;
-	(void)si;
-	/// \todo Tato funkce reprezentujte vertex shader.<br>
-	/// Vaším úkolem je správně trasnformovat vrcholy modelu.
-	/// Bližší informace jsou uvedeny na hlavní stránce dokumentace.
+void drawModel_vertexShader(OutVertex&outVertex,InVertex const&inVertex,ShaderInterface const&si)
+{
+	const int index = 10 + inVertex.gl_DrawID * 5;
 
-	outVertex.attributes[0].v3 = si.uniforms[10 + inVertex.gl_DrawID * 5 + 0].m4 * glm::vec4(inVertex.attributes[0].v3, 1.f);
-	outVertex.attributes[1].v3 = si.uniforms[10 + inVertex.gl_DrawID * 5 + 1].m4 * glm::vec4(inVertex.attributes[1].v3, 0.f);
+	// Apply vertex transformations
+	const glm::vec4 vertex1 = glm::vec4(inVertex.attributes[0].v3, 1.f);
+	const glm::vec4 vertex2 = glm::vec4(inVertex.attributes[1].v3, 0.f);
+
+	outVertex.attributes[0].v3 = si.uniforms[index].m4 * vertex1;
+	outVertex.attributes[1].v3 = si.uniforms[index + 1].m4 * vertex2;
 	outVertex.attributes[2].v2 = inVertex.attributes[2].v2;
 	outVertex.attributes[3].u1 = inVertex.gl_DrawID;
-	outVertex.gl_Position = si.uniforms[0].m4 * si.uniforms[10 + inVertex.gl_DrawID * 5 + 0].m4 * glm::vec4(inVertex.attributes[0].v3, 1.f);
+
+	const glm::mat4 transformationMatrix = si.uniforms[0].m4 * si.uniforms[index].m4;
+	outVertex.gl_Position = transformationMatrix * vertex1;
+
+	/*
+	outVertex.attributes[0].v3 = si.uniforms[index].m4 * glm::vec4(inVertex.attributes[0].v3, 1.f);
+	outVertex.attributes[1].v3 = si.uniforms[index + 1].m4 * glm::vec4(inVertex.attributes[1].v3, 0.f);
+	outVertex.attributes[2].v2 = inVertex.attributes[2].v2;
+	outVertex.attributes[3].u1 = inVertex.gl_DrawID;
+	outVertex.gl_Position = si.uniforms[0].m4 * si.uniforms[index].m4 * glm::vec4(inVertex.attributes[0].v3, 1.f);
+	*/
 }
 //! [drawModel_vs]
 
@@ -156,21 +166,22 @@ void drawModel_fragmentShader(OutFragment&outFragment,InFragment const&inFragmen
 	/// Vaším úkolem je správně obarvit fragmenty a osvětlit je pomocí lambertova osvětlovacího modelu.
 	/// Bližší informace jsou uvedeny na hlavní stránce dokumentace.
 	
-	int32_t textureID = si.uniforms[10 + inFragment.attributes[3].u1 * 5 + 3].i1;
+	const int index = 10 + inFragment.attributes[3].u1 * 5;
+	int32_t textureID = si.uniforms[index + 3].i1;
 	glm::vec3 normal  = glm::normalize(inFragment.attributes[1].v3);
 	glm::vec3 light   = glm::normalize(si.uniforms[1].v3 - inFragment.attributes[0].v3);
 	glm::vec4 dC; 
 
 	// check if texture is set
 	if (textureID == -1)
-		dC = si.uniforms[10 + inFragment.attributes[3].u1 * 5 + 2].v4;
+		dC = si.uniforms[index + 2].v4;
 	else
 		dC = read_texture(si.textures[textureID], inFragment.attributes[2].v2);
 
-	if (si.uniforms[10 + inFragment.attributes[3].u1 * 5 + 4].v1 == 1.f && 
+	if (si.uniforms[index + 4].v1 == 1.f && 
 		glm::dot(normal, si.uniforms[2].v3 - inFragment.attributes[0].v3) < 0.0)
 	{
-		normal *= -1.0;
+		normal *= -1.0f;
 	}
 
 	float dF = glm::clamp(glm::dot(light, normal), 0.f, 1.f);
