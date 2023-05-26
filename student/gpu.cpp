@@ -12,7 +12,7 @@ struct Triangle {
     OutVertex points[3];
 };
 
-void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib& attrib, uint32_t vertexId)
+void readAttributes(Attribute& vertexAtrrib, GPUMemory& mem, VertexAttrib& attrib, uint32_t vertexId)
 {
     if (attrib.type == AttributeType::EMPTY) return;
 
@@ -23,29 +23,29 @@ void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib& attri
     switch (attrib.type)
     {
         case AttributeType::UVEC2:
-            vertexAtrrib->u2 = *((glm::uvec2*)(bytePtr));
+            vertexAtrrib.u2 = *((glm::uvec2*)(bytePtr));
             break;
         case AttributeType::UVEC3:
-            vertexAtrrib->u3 = *((glm::uvec3*)(bytePtr));
+            vertexAtrrib.u3 = *((glm::uvec3*)(bytePtr));
             break;
         case AttributeType::UVEC4:
-            vertexAtrrib->u4 = *((glm::uvec4*)(bytePtr));
+            vertexAtrrib.u4 = *((glm::uvec4*)(bytePtr));
             break;
         case AttributeType::VEC4:
-            vertexAtrrib->v4 = *((glm::vec4*)(bytePtr));
+            vertexAtrrib.v4 = *((glm::vec4*)(bytePtr));
             break;
         case AttributeType::VEC3:
-            vertexAtrrib->v3 = *((glm::vec3*)(bytePtr));
+            vertexAtrrib.v3 = *((glm::vec3*)(bytePtr));
             break;
         case AttributeType::VEC2:
-            vertexAtrrib->v2 = *((glm::vec2*)(bytePtr));
+            vertexAtrrib.v2 = *((glm::vec2*)(bytePtr));
             break;
         case AttributeType::FLOAT:
-            vertexAtrrib->v1 = *((float*)(bytePtr));
+            vertexAtrrib.v1 = *((float*)(bytePtr));
             break;
         default:
             // its UINT
-            vertexAtrrib->u1 = *((uint32_t*)(bytePtr));
+            vertexAtrrib.u1 = *((uint32_t*)(bytePtr));
             break;
     }
 }
@@ -66,17 +66,17 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
     }      
 }
 
-void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray& vao, uint32_t shaderInvocation)
+void runVertexAssembly(InVertex& inVertex, GPUMemory& mem, VertexArray& vao, uint32_t shaderInvocation)
 {
-    inVertex->gl_VertexID = computeVertexID(mem, vao, shaderInvocation);
+    inVertex.gl_VertexID = computeVertexID(mem, vao, shaderInvocation);
 
     for (size_t i = 0; i < maxAttributes; i++)
     {
-        readAttributes(&inVertex->attributes[i], mem, vao.vertexAttrib[i], inVertex->gl_VertexID);
+        readAttributes(inVertex.attributes[i], mem, vao.vertexAttrib[i], inVertex.gl_VertexID);
     }
 }
 
-Triangle primitiveAssembly(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID, uint32_t triangleIndex)
+Triangle primitiveAssembly(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID, uint32_t triangleIndex, ShaderInterface& si)
 {
     Program prg = mem.programs[cmd.programID];
     Triangle triangle;
@@ -88,56 +88,51 @@ Triangle primitiveAssembly(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID, ui
         OutVertex outVertex;
         inVertex.gl_DrawID = drawID;
 
-        runVertexAssembly(&inVertex, mem, cmd.vao, i);
-
-        ShaderInterface si;
-        si.uniforms = mem.uniforms;
-        si.textures = mem.textures;
+        runVertexAssembly(inVertex, mem, cmd.vao, i);
 
         prg.vertexShader(outVertex, inVertex, si);
-        
         triangle.points[i % 3] = outVertex;
     }
 
     return triangle;
 }
 
-void perspectiveDivision(Triangle* triangle)
+void perspectiveDivision(Triangle& triangle)
 {
     for (size_t i = 0; i < 3; i++)
     {
-        float w = triangle->points[i].gl_Position.w;
-        triangle->points[i].gl_Position.x /= w;
-        triangle->points[i].gl_Position.y /= w;
-        triangle->points[i].gl_Position.z /= w;
+        float w = triangle.points[i].gl_Position.w;
+        triangle.points[i].gl_Position.x /= w;
+        triangle.points[i].gl_Position.y /= w;
+        triangle.points[i].gl_Position.z /= w;
     }
 }
 
-void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
+void viewportTransformation(Triangle& triangle, uint32_t width, uint32_t height)
 {
     for (size_t i = 0; i < 3; i++)
     {
-        triangle->points[i].gl_Position.x = ((triangle->points[i].gl_Position.x + 1.0f) / 2.f) * width;
-        triangle->points[i].gl_Position.y = ((triangle->points[i].gl_Position.y + 1.0f) / 2.f) * height;
+        triangle.points[i].gl_Position.x = ((triangle.points[i].gl_Position.x + 1.0f) * 0.5f) * width;
+        triangle.points[i].gl_Position.y = ((triangle.points[i].gl_Position.y + 1.0f) * 0.5f) * height;
     }
 }
 
-void loadAttributesToFragment(InFragment* inFragment, OutVertex& p1, OutVertex& p2, OutVertex& p3, Program& prg, size_t i, double l0, float l1, float l2)
+void loadAttributesToFragment(InFragment& inFragment, OutVertex& p1, OutVertex& p2, OutVertex& p3, Program& prg, size_t i, double l0, float l1, float l2)
 {
     // dont interpolate integer attribs
     switch (prg.vs2fs[i])
     {
         case AttributeType::UINT:
-            inFragment->attributes[i].u1 = p1.attributes[i].u1;
+            inFragment.attributes[i].u1 = p1.attributes[i].u1;
             return;
         case AttributeType::UVEC2:
-            inFragment->attributes[i].u2 = p1.attributes[i].u2;
+            inFragment.attributes[i].u2 = p1.attributes[i].u2;
             return;
         case AttributeType::UVEC3:
-            inFragment->attributes[i].u3 = p1.attributes[i].u3;
+            inFragment.attributes[i].u3 = p1.attributes[i].u3;
             return;
         case AttributeType::UVEC4:
-            inFragment->attributes[i].u4 = p1.attributes[i].u4;
+            inFragment.attributes[i].u4 = p1.attributes[i].u4;
             return;
         default:
             break;
@@ -153,23 +148,23 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex& p1, OutVertex& 
     {
         case AttributeType::VEC4:
             for (int vecI = 0; vecI < 4; vecI++){
-                inFragment->attributes[i].v4[vecI] = (float) ((p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2));
+                inFragment.attributes[i].v4[vecI] = (float) ((p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2));
             }
             break;
 
         case AttributeType::VEC3:
             for (int vecI = 0; vecI < 3; vecI++){
-                inFragment->attributes[i].v3[vecI] = (float) ((p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2));
+                inFragment.attributes[i].v3[vecI] = (float) ((p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2));
             }
             break;
         case AttributeType::VEC2:
             for (int vecI = 0; vecI < 2; vecI++){
-                inFragment->attributes[i].v2[vecI] = (float) ((p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2));
+                inFragment.attributes[i].v2[vecI] = (float) ((p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2));
             }
             break;
         default:
             // its FLOAT
-            inFragment->attributes[i].v1 = (float) ((p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2));
+            inFragment.attributes[i].v1 = (float) ((p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2));
             break;
     }
 }
@@ -222,7 +217,7 @@ void loadFragmentToShader(Frame& frame, float x, float y, Program& prg, ShaderIn
     for (size_t i = 0; i < maxAttributes; i++)
     {
         if (prg.vs2fs[i] != AttributeType::EMPTY)
-            loadAttributesToFragment(&inFragment, p1, p2, p3, prg, i, l0, l1, l2);
+            loadAttributesToFragment(inFragment, p1, p2, p3, prg, i, l0, l1, l2);
     }
 
     OutFragment outFragrament;
@@ -242,18 +237,18 @@ bool isFacingCamera(glm::vec3& cameraPos, glm::vec3& vertexNorm)
     return glm::dot(vertexNorm, cameraPos) > 0;
 }
 
-void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInterface& si)
+void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInterface& si)
 {
     // check if all points of the triangle are same
-    if (triangle->points[0].gl_Position == triangle->points[1].gl_Position && triangle->points[1].gl_Position == triangle->points[2].gl_Position)
+    if (triangle.points[0].gl_Position == triangle.points[1].gl_Position && triangle.points[1].gl_Position == triangle.points[2].gl_Position)
         return;
 
     // check if triangle is facing a camera, if not discard it.
-    if (cmd.backfaceCulling && !isFacingCamera(mem.uniforms[2].v3, triangle->points[0].attributes[1].v3))
+    if (cmd.backfaceCulling && !isFacingCamera(mem.uniforms[2].v3, triangle.points[0].attributes[1].v3))
         return;
 
     // calculate area of whole triangle
-    float triangleArea = edgeFunction(triangle->points[0], triangle->points[1], triangle->points[2]);
+    float triangleArea = edgeFunction(triangle.points[0], triangle.points[1], triangle.points[2]);
 
     // check if triangle is cw or ccw
     bool clockwise = true;
@@ -271,11 +266,11 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
 
     ////////////////////////////////////////////////////////////////
     // bounding box
-    float min_x = glm::min(triangle->points[0].gl_Position.x, glm::min(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
-    float min_y = glm::min(triangle->points[0].gl_Position.y, glm::min(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+    float min_x = glm::min(triangle.points[0].gl_Position.x, glm::min(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
+    float min_y = glm::min(triangle.points[0].gl_Position.y, glm::min(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
 
-    float max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
-    float max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
+    float max_x = glm::max(triangle.points[0].gl_Position.x, glm::max(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
+    float max_y = glm::max(triangle.points[0].gl_Position.y, glm::max(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
 
     min_x = ((int) (glm::max(min_x, 0.f))) + 0.5f;
     min_y = ((int) (glm::max(min_y, 0.f))) + 0.5f;
@@ -286,16 +281,16 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
 
     ////////////////////////////////////////////////////////////////
     // point[1] - point[0]
-    glm::vec2 dirVec1 = glm::vec2(triangle->points[1].gl_Position.x - triangle->points[0].gl_Position.x, triangle->points[1].gl_Position.y - triangle->points[0].gl_Position.y);
+    glm::vec2 dirVec1 = glm::vec2(triangle.points[1].gl_Position.x - triangle.points[0].gl_Position.x, triangle.points[1].gl_Position.y - triangle.points[0].gl_Position.y);
     // point[2] - point[1]
-    glm::vec2 dirVec2 = glm::vec2(triangle->points[2].gl_Position.x - triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.y - triangle->points[1].gl_Position.y);
+    glm::vec2 dirVec2 = glm::vec2(triangle.points[2].gl_Position.x - triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.y - triangle.points[1].gl_Position.y);
     // point[0] - point[2]
-    glm::vec2 dirVec3 = glm::vec2(triangle->points[0].gl_Position.x - triangle->points[2].gl_Position.x, triangle->points[0].gl_Position.y - triangle->points[2].gl_Position.y);
+    glm::vec2 dirVec3 = glm::vec2(triangle.points[0].gl_Position.x - triangle.points[2].gl_Position.x, triangle.points[0].gl_Position.y - triangle.points[2].gl_Position.y);
 
     // EDGE FUNCTIONS
-    float E1 = ((min_y - triangle->points[0].gl_Position.y) * dirVec1.x) - ((min_x - triangle->points[0].gl_Position.x) * dirVec1.y);
-    float E2 = ((min_y - triangle->points[1].gl_Position.y) * dirVec2.x) - ((min_x - triangle->points[1].gl_Position.x) * dirVec2.y);
-    float E3 = ((min_y - triangle->points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle->points[2].gl_Position.x) * dirVec3.y);
+    float E1 = ((min_y - triangle.points[0].gl_Position.y) * dirVec1.x) - ((min_x - triangle.points[0].gl_Position.x) * dirVec1.y);
+    float E2 = ((min_y - triangle.points[1].gl_Position.y) * dirVec2.x) - ((min_x - triangle.points[1].gl_Position.x) * dirVec2.y);
+    float E3 = ((min_y - triangle.points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle.points[2].gl_Position.x) * dirVec3.y);
     ////////////////////////////////////////////////////////////////
 
     if (!clockwise)
@@ -311,7 +306,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
             {
                 if (E1 >= 0 && E2 >= 0 && E3 >= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, E2, E3);
+                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, E2, E3);
                     insideTriangle = true;
                 }
                 else if (insideTriangle)
@@ -335,7 +330,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
             {
                 if (E1 >= 0 && E2 >= 0 && E3 >= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, E2, E3);
+                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, E2, E3);
                     insideTriangle = true;
                 }
                 else if (insideTriangle)
@@ -359,7 +354,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
             {
                 if (E1 <= 0 && E2 <= 0 && E3 <= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(E2), abs(E3));
+                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, abs(E2), abs(E3));
                     insideTriangle = true;
                 }
                 else if (insideTriangle)
@@ -383,7 +378,7 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
             {
                 if (E1 <= 0 && E2 <= 0 && E3 <= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(E2), abs(E3));
+                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, abs(E2), abs(E3));
                     insideTriangle = true;
                 }
                 else if (insideTriangle)
@@ -396,39 +391,39 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInter
     }
 }
 
-void cutEdge(OutVertex* a, OutVertex& b, Program& prg)
+void cutEdge(OutVertex& a, OutVertex& b, Program& prg)
 {
-    float t = (-a->gl_Position.w - a->gl_Position.z) / (b.gl_Position.w - a->gl_Position.w + b.gl_Position.z - a->gl_Position.z);
+    float t = (-a.gl_Position.w - a.gl_Position.z) / (b.gl_Position.w - a.gl_Position.w + b.gl_Position.z - a.gl_Position.z);
     
-    a->gl_Position = a->gl_Position + t * (b.gl_Position - a->gl_Position);
+    a.gl_Position = a.gl_Position + t * (b.gl_Position - a.gl_Position);
 
     for (uint32_t i = 0; i < maxAttributes; i++)
     {
         switch (prg.vs2fs[i])
         {
             case AttributeType::FLOAT:
-                a->attributes[i].v1 = a->attributes[i].v1 + t * (b.attributes[i].v1 - a->attributes[i].v1);
+                a.attributes[i].v1 = a.attributes[i].v1 + t * (b.attributes[i].v1 - a.attributes[i].v1);
                 continue;
             case AttributeType::VEC2:
-                a->attributes[i].v2 = a->attributes[i].v2 + t * (b.attributes[i].v2 - a->attributes[i].v2);
+                a.attributes[i].v2 = a.attributes[i].v2 + t * (b.attributes[i].v2 - a.attributes[i].v2);
                 continue;
             case AttributeType::VEC3:
-                a->attributes[i].v3 = a->attributes[i].v3 + t * (b.attributes[i].v3 - a->attributes[i].v3);
+                a.attributes[i].v3 = a.attributes[i].v3 + t * (b.attributes[i].v3 - a.attributes[i].v3);
                 continue;
             case AttributeType::VEC4:
-                a->attributes[i].v4 = a->attributes[i].v4 + t * (b.attributes[i].v4 - a->attributes[i].v4);
+                a.attributes[i].v4 = a.attributes[i].v4 + t * (b.attributes[i].v4 - a.attributes[i].v4);
                 continue;
             case AttributeType::UINT:
-                a->attributes[i].u1 = (uint32_t) (a->attributes[i].u1 + t * (b.attributes[i].u1 - a->attributes[i].u1));
+                a.attributes[i].u1 = (uint32_t) (a.attributes[i].u1 + t * (b.attributes[i].u1 - a.attributes[i].u1));
                 continue;
             case AttributeType::UVEC2:
-                a->attributes[i].u2 = a->attributes[i].u2 + (uint32_t) t * (b.attributes[i].u2 - a->attributes[i].u2);
+                a.attributes[i].u2 = a.attributes[i].u2 + (uint32_t) t * (b.attributes[i].u2 - a.attributes[i].u2);
                 continue;
             case AttributeType::UVEC3:
-                a->attributes[i].u3 = a->attributes[i].u3 + (uint32_t) t * (b.attributes[i].u3 - a->attributes[i].u3);
+                a.attributes[i].u3 = a.attributes[i].u3 + (uint32_t) t * (b.attributes[i].u3 - a.attributes[i].u3);
                 continue;
             case AttributeType::UVEC4:
-                a->attributes[i].u4 = a->attributes[i].u4 + (uint32_t)t * (b.attributes[i].u4 - a->attributes[i].u4);
+                a.attributes[i].u4 = a.attributes[i].u4 + (uint32_t)t * (b.attributes[i].u4 - a.attributes[i].u4);
                 continue;
             default:
                 break;
@@ -436,12 +431,12 @@ void cutEdge(OutVertex* a, OutVertex& b, Program& prg)
     }
 }
 
-int clipping(Triangle* triangle, Triangle* secondTriangle, Program& prg)
+int clipping(Triangle& triangle, Triangle& secondTriangle, Program& prg)
 {
     bool isInsideCameraMask[3];
-    isInsideCameraMask[0] = (-triangle->points[0].gl_Position.w) > triangle->points[0].gl_Position.z;
-    isInsideCameraMask[1] = (-triangle->points[1].gl_Position.w) > triangle->points[1].gl_Position.z;
-    isInsideCameraMask[2] = (-triangle->points[2].gl_Position.w) > triangle->points[2].gl_Position.z;
+    isInsideCameraMask[0] = (-triangle.points[0].gl_Position.w) > triangle.points[0].gl_Position.z;
+    isInsideCameraMask[1] = (-triangle.points[1].gl_Position.w) > triangle.points[1].gl_Position.z;
+    isInsideCameraMask[2] = (-triangle.points[2].gl_Position.w) > triangle.points[2].gl_Position.z;
 
     if (isInsideCameraMask[0] && isInsideCameraMask[1] && isInsideCameraMask[2])
     {
@@ -458,52 +453,52 @@ int clipping(Triangle* triangle, Triangle* secondTriangle, Program& prg)
     if (!isInsideCameraMask[0] && isInsideCameraMask[1] && isInsideCameraMask[2])
     {
         // Point 0 OK (is not inside)
-        cutEdge(&triangle->points[1], triangle->points[0], prg);  // change point 1
-        cutEdge(&triangle->points[2], triangle->points[0], prg);  // change point 2
+        cutEdge(triangle.points[1], triangle.points[0], prg);  // change point 1
+        cutEdge(triangle.points[2], triangle.points[0], prg);  // change point 2
         return 1;
     }
     else if (isInsideCameraMask[0] && !isInsideCameraMask[1] && isInsideCameraMask[2])
     {
         // Point 1 OK (is not inside)
-        cutEdge(&triangle->points[0], triangle->points[1], prg);  // change point 0
-        cutEdge(&triangle->points[2], triangle->points[1], prg);  // change point 2
+        cutEdge(triangle.points[0], triangle.points[1], prg);  // change point 0
+        cutEdge(triangle.points[2], triangle.points[1], prg);  // change point 2
         return 1;
     }
     else if (isInsideCameraMask[0] && isInsideCameraMask[1] && !isInsideCameraMask[2])
     {
         // Point 2 OK (is not inside)
-        cutEdge(&triangle->points[0], triangle->points[2], prg);  // change point 0
-        cutEdge(&triangle->points[1], triangle->points[2], prg);  // change point 1
+        cutEdge(triangle.points[0], triangle.points[2], prg);  // change point 0
+        cutEdge(triangle.points[1], triangle.points[2], prg);  // change point 1
         return 1;
     }
     else if (isInsideCameraMask[0])
     {
         // Points 1, 2 OK (not inside)
-        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+        memcpy(&secondTriangle, &triangle, sizeof(Triangle));                 // make a copy of a triangle
 
-        cutEdge(&triangle->points[0], triangle->points[1], prg);             // change point 0
-        cutEdge(&secondTriangle->points[0], secondTriangle->points[2], prg); // change point 0 of second triangle
-        triangle->points[2] = secondTriangle->points[0];                    // change point of first triangle to second intersection
+        cutEdge(triangle.points[0], triangle.points[1], prg);             // change point 0
+        cutEdge(secondTriangle.points[0], secondTriangle.points[2], prg); // change point 0 of second triangle
+        triangle.points[2] = secondTriangle.points[0];                    // change point of first triangle to second intersection
         return 2;
     }
     else if (isInsideCameraMask[1])
     {
         // Points 0, 2 OK (not inside)
-        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+        memcpy(&secondTriangle, &triangle, sizeof(Triangle));                 // make a copy of a triangle
 
-        cutEdge(&triangle->points[1], triangle->points[0], prg);             // change point 1
-        cutEdge(&secondTriangle->points[1], secondTriangle->points[2], prg); // change point 1 of second triangle
-        triangle->points[2] = secondTriangle->points[1];                    // change point of first triangle to second intersection
+        cutEdge(triangle.points[1], triangle.points[0], prg);              // change point 1
+        cutEdge(secondTriangle.points[1], secondTriangle.points[2], prg);  // change point 1 of second triangle
+        triangle.points[2] = secondTriangle.points[1];                           // change point of first triangle to second intersection
         return 2;
     }
     else
     {
         // Points 0, 1 OK (not inside)
-        memcpy(secondTriangle, triangle, sizeof(Triangle));                 // make a copy of a triangle
+        memcpy(&secondTriangle, &triangle, sizeof(Triangle));                 // make a copy of a triangle
 
-        cutEdge(&triangle->points[2], triangle->points[0], prg);             // change point 2
-        cutEdge(&secondTriangle->points[2], secondTriangle->points[1], prg); // change point 2 of second triangle
-        triangle->points[1] = secondTriangle->points[2];                    // change point of first triangle to second intersection
+        cutEdge(triangle.points[2], triangle.points[0], prg);             // change point 2
+        cutEdge(secondTriangle.points[2], secondTriangle.points[1], prg); // change point 2 of second triangle
+        triangle.points[1] = secondTriangle.points[2];                    // change point of first triangle to second intersection
         return 2;
     }
 }
@@ -516,10 +511,10 @@ void draw(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID)
 
     for (uint32_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
-        Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
+        Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex, si);
         Triangle secondTriangle;
 
-        switch (clipping(&triangle, &secondTriangle, mem.programs[cmd.programID]))
+        switch (clipping(triangle, secondTriangle, mem.programs[cmd.programID]))
         {
             case 0:
                 // dont rasterize this triangle
@@ -529,15 +524,15 @@ void draw(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID)
                 break;
             case 2:
                 // two triangles to rasterize
-                perspectiveDivision(&secondTriangle);
-                viewportTransformation(&secondTriangle, mem.framebuffer.width, mem.framebuffer.height);
-                rasterize(mem, &secondTriangle, cmd, si);
+                perspectiveDivision(secondTriangle);
+                viewportTransformation(secondTriangle, mem.framebuffer.width, mem.framebuffer.height);
+                rasterize(mem, secondTriangle, cmd, si);
                 break;
         }
 
-        perspectiveDivision(&triangle);
-        viewportTransformation(&triangle, mem.framebuffer.width, mem.framebuffer.height);
-        rasterize(mem, &triangle, cmd, si);
+        perspectiveDivision(triangle);
+        viewportTransformation(triangle, mem.framebuffer.width, mem.framebuffer.height);
+        rasterize(mem, triangle, cmd, si);
     }
 }
 
