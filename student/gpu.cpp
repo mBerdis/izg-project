@@ -12,7 +12,7 @@ struct Triangle {
     OutVertex points[3];
 };
 
-void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib attrib, uint32_t vertexId)
+void readAttributes(Attribute* vertexAtrrib, GPUMemory& mem, VertexAttrib& attrib, uint32_t vertexId)
 {
     if (attrib.type == AttributeType::EMPTY) return;
 
@@ -66,7 +66,7 @@ uint32_t computeVertexID(GPUMemory& mem, VertexArray const& vao, uint32_t shader
     }      
 }
 
-void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& vao, uint32_t shaderInvocation)
+void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray& vao, uint32_t shaderInvocation)
 {
     inVertex->gl_VertexID = computeVertexID(mem, vao, shaderInvocation);
 
@@ -76,7 +76,7 @@ void runVertexAssembly(InVertex* inVertex, GPUMemory& mem, VertexArray const& va
     }
 }
 
-Triangle primitiveAssembly(GPUMemory& mem, DrawCommand cmd, uint32_t drawID, uint32_t triangleIndex)
+Triangle primitiveAssembly(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID, uint32_t triangleIndex)
 {
     Program prg = mem.programs[cmd.programID];
     Triangle triangle;
@@ -122,7 +122,7 @@ void viewportTransformation(Triangle* triangle, uint32_t width, uint32_t height)
     }
 }
 
-void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2, OutVertex p3, Program prg, size_t i, double l0, float l1, float l2)
+void loadAttributesToFragment(InFragment* inFragment, OutVertex& p1, OutVertex& p2, OutVertex& p3, Program& prg, size_t i, double l0, float l1, float l2)
 {
     // dont interpolate integer attribs
     switch (prg.vs2fs[i])
@@ -174,7 +174,7 @@ void loadAttributesToFragment(InFragment* inFragment, OutVertex p1, OutVertex p2
     }
 }
 
-void perFragmentOperations(Frame& framebuffer, OutFragment outFragment, float depth, float x, float y)
+void perFragmentOperations(Frame& framebuffer, OutFragment& outFragment, float depth, float x, float y)
 {
     x = x - 0.5f;
     y = y - 0.5f;
@@ -207,7 +207,7 @@ void perFragmentOperations(Frame& framebuffer, OutFragment outFragment, float de
     framebuffer.color[pos + 3] = (uint8_t) color.a;
 }
 
-void loadFragmentToShader(Frame frame, float x, float y, Program prg, ShaderInterface si, OutVertex p1, OutVertex p2, OutVertex p3, float area, float area2, float area3)
+void loadFragmentToShader(Frame& frame, float x, float y, Program& prg, ShaderInterface& si, OutVertex& p1, OutVertex& p2, OutVertex& p3, float area, float area2, float area3)
 {
     float l0 = area2 / area;
     float l1 = area3 / area;
@@ -242,18 +242,28 @@ bool isFacingCamera(glm::vec3& cameraPos, glm::vec3& vertexNorm)
     return glm::dot(vertexNorm, cameraPos) > 0;
 }
 
-void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
+void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand& cmd, ShaderInterface& si)
 {
     // check if all points of the triangle are same
     if (triangle->points[0].gl_Position == triangle->points[1].gl_Position && triangle->points[1].gl_Position == triangle->points[2].gl_Position)
         return;
 
-    bool isFacingCam =  isFacingCamera(mem.uniforms[2].v3, triangle->points[0].attributes[1].v3) || 
-                        isFacingCamera(mem.uniforms[2].v3, triangle->points[1].attributes[1].v3) || 
-                        isFacingCamera(mem.uniforms[2].v3, triangle->points[2].attributes[1].v3);
-
     // check if triangle is facing a camera, if not discard it.
-    if (!isFacingCam && cmd.backfaceCulling)
+    if (cmd.backfaceCulling && !isFacingCamera(mem.uniforms[2].v3, triangle->points[0].attributes[1].v3))
+        return;
+
+    // calculate area of whole triangle
+    float triangleArea = edgeFunction(triangle->points[0], triangle->points[1], triangle->points[2]);
+
+    // check if triangle is cw or ccw
+    bool clockwise = true;
+    if (triangleArea < 0)
+    {
+        clockwise = false;
+        triangleArea = abs(triangleArea);
+    }
+
+    if (clockwise && cmd.backfaceCulling)
         return;
 
     Frame frame = mem.framebuffer;
@@ -267,10 +277,10 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     float max_x = glm::max(triangle->points[0].gl_Position.x, glm::max(triangle->points[1].gl_Position.x, triangle->points[2].gl_Position.x));
     float max_y = glm::max(triangle->points[0].gl_Position.y, glm::max(triangle->points[1].gl_Position.y, triangle->points[2].gl_Position.y));
 
-    min_x = (int) (glm::max(min_x, 0.f)) + 0.5f;
-    min_y = (int) (glm::max(min_y, 0.f)) + 0.5f;
-    max_x = (int) (glm::min(max_x + 1.f, (float) (frame.width)));
-    max_y = (int) (glm::min(max_y + 1.f, (float) (frame.height)));
+    min_x = ((int) (glm::max(min_x, 0.f))) + 0.5f;
+    min_y = ((int) (glm::max(min_y, 0.f))) + 0.5f;
+    max_x = (float) ((int) (glm::min(max_x + 1.f, (float) (frame.width))));
+    max_y = (float) ((int) (glm::min(max_y + 1.f, (float) (frame.height))));
     ////////////////////////////////////////////////////////////////
 
 
@@ -288,64 +298,20 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
     float E3 = ((min_y - triangle->points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle->points[2].gl_Position.x) * dirVec3.y);
     ////////////////////////////////////////////////////////////////
 
-    // calculate area of whole triangle
-    float triangleArea = abs(edgeFunction(triangle->points[0], triangle->points[1], triangle->points[2]));
-
-    ShaderInterface si;
-    si.uniforms = mem.uniforms;
-    si.textures = mem.textures;
-
-    if (cmd.backfaceCulling)
+    if (!clockwise)
     {
-        for (float y = min_y; y < max_y; y++)
-        {
-            float t1 = E1;
-            float t2 = E2;
-            float t3 = E3;
-            bool insideTriangle = false;
+        float y = min_y;
+        float x = min_x;
+        bool insideTriangle = false;
 
-            for (float x = min_x; x < max_x; x++)
-            {
-                if (t1 >= 0 && t2 > 0 && t3 >= 0)
-                {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t2, t3);
-                    insideTriangle = true;
-                }
-                else if (insideTriangle)
-                {
-                    // got out of triangle
-                    break;
-                }
-                    
-                t1 -= dirVec1.y;
-                t2 -= dirVec2.y;
-                t3 -= dirVec3.y;
-            }
-
-            E1 += dirVec1.x;
-            E2 += dirVec2.x;
-            E3 += dirVec3.x;
-        }
-    }
-    else
-    {
-        for (float y = min_y; y < max_y; y++)
+        for (; y < max_y; ++y, E1 += dirVec1.x, E2 += dirVec2.x, E3 += dirVec3.x, insideTriangle = false)
         {
-            float t1 = E1;
-            float t2 = E2;
-            float t3 = E3;
-            bool insideTriangle = false;
-            
-            for (float x = min_x; x < max_x; x++)
+            // left to right, incrementing x
+            for (; x < max_x; ++x, E1 -= dirVec1.y, E2 -= dirVec2.y, E3 -= dirVec3.y)
             {
-                if (t1 <= 0 && t2 <= 0 && t3 <= 0)
+                if (E1 >= 0 && E2 >= 0 && E3 >= 0)
                 {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(t2), abs(t3));
-                    insideTriangle = true;
-                }
-                else if (t1 >= 0 && t2 > 0 && t3 >= 0)
-                {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, t2, t3);
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, E2, E3);
                     insideTriangle = true;
                 }
                 else if (insideTriangle)
@@ -353,20 +319,84 @@ void rasterize(GPUMemory& mem, Triangle* triangle, DrawCommand cmd)
                     // didnt rasterize a current pixel, but did previous
                     break;
                 }
-
-                t1 -= dirVec1.y;
-                t2 -= dirVec2.y;
-                t3 -= dirVec3.y;
             }
 
+            // next iteration with different direction
+            // move up
+            if (!(++y < max_y))
+                break;
             E1 += dirVec1.x;
             E2 += dirVec2.x;
             E3 += dirVec3.x;
+            insideTriangle = false;
+
+            // right to left, decrementing x
+            for (; x >= min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
+            {
+                if (E1 >= 0 && E2 >= 0 && E3 >= 0)
+                {
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, E2, E3);
+                    insideTriangle = true;
+                }
+                else if (insideTriangle)
+                {
+                    // didnt rasterize a current pixel, but did previous
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        float y = min_y;
+        float x = min_x;
+        bool insideTriangle = false;
+
+        for (; y < max_y; ++y, E1 += dirVec1.x, E2 += dirVec2.x, E3 += dirVec3.x, insideTriangle = false)
+        {
+            // left to right, incrementing x
+            for (; x < max_x; ++x, E1 -= dirVec1.y, E2 -= dirVec2.y, E3 -= dirVec3.y)
+            {
+                if (E1 <= 0 && E2 <= 0 && E3 <= 0)
+                {
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(E2), abs(E3));
+                    insideTriangle = true;
+                }
+                else if (insideTriangle)
+                {
+                    // didnt rasterize a current pixel, but did previous
+                    break;
+                }
+            }
+
+            // next iteration with different direction
+            // move up
+            if (!(++y < max_y))
+                break;
+            E1 += dirVec1.x;
+            E2 += dirVec2.x;
+            E3 += dirVec3.x;
+            insideTriangle = false;
+
+            // right to left, decrementing x
+            for (; x >= min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
+            {
+                if (E1 <= 0 && E2 <= 0 && E3 <= 0)
+                {
+                    loadFragmentToShader(frame, x, y, prg, si, triangle->points[0], triangle->points[1], triangle->points[2], triangleArea, abs(E2), abs(E3));
+                    insideTriangle = true;
+                }
+                else if (insideTriangle)
+                {
+                    // didnt rasterize a current pixel, but did previous
+                    break;
+                }
+            }
         }
     }
 }
 
-void cutEdge(OutVertex* a, OutVertex b, Program prg)
+void cutEdge(OutVertex* a, OutVertex& b, Program& prg)
 {
     float t = (-a->gl_Position.w - a->gl_Position.z) / (b.gl_Position.w - a->gl_Position.w + b.gl_Position.z - a->gl_Position.z);
     
@@ -406,7 +436,7 @@ void cutEdge(OutVertex* a, OutVertex b, Program prg)
     }
 }
 
-int clipping(Triangle* triangle, Triangle* secondTriangle, Program prg)
+int clipping(Triangle* triangle, Triangle* secondTriangle, Program& prg)
 {
     bool isInsideCameraMask[3];
     isInsideCameraMask[0] = (-triangle->points[0].gl_Position.w) > triangle->points[0].gl_Position.z;
@@ -478,8 +508,12 @@ int clipping(Triangle* triangle, Triangle* secondTriangle, Program prg)
     }
 }
 
-void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID) 
+void draw(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID) 
 {
+    ShaderInterface si;
+    si.uniforms = mem.uniforms;
+    si.textures = mem.textures;
+
     for (uint32_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
         Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex);
@@ -497,17 +531,17 @@ void draw(GPUMemory& mem, DrawCommand cmd, uint32_t drawID)
                 // two triangles to rasterize
                 perspectiveDivision(&secondTriangle);
                 viewportTransformation(&secondTriangle, mem.framebuffer.width, mem.framebuffer.height);
-                rasterize(mem, &secondTriangle, cmd);
+                rasterize(mem, &secondTriangle, cmd, si);
                 break;
         }
 
         perspectiveDivision(&triangle);
         viewportTransformation(&triangle, mem.framebuffer.width, mem.framebuffer.height);
-        rasterize(mem, &triangle, cmd);
+        rasterize(mem, &triangle, cmd, si);
     }
 }
 
-void clear(GPUMemory& mem, ClearCommand cmd) {
+void clear(GPUMemory& mem, ClearCommand& cmd) {
     if (cmd.clearColor) {
         uint32_t combinedValue = 0;
         combinedValue |= ((uint32_t)(cmd.color.r * 255.f));
@@ -547,7 +581,7 @@ void clear(GPUMemory& mem, ClearCommand cmd) {
 }
 
 //! [gpu_execute]
-void gpu_execute(GPUMemory&mem,CommandBuffer &cb){
+void gpu_execute(GPUMemory& mem, CommandBuffer& cb){
   (void)mem;
   (void)cb;
   /// \todo Tato funkce reprezentuje funkcionalitu grafické karty.<br>
@@ -580,15 +614,21 @@ void gpu_execute(GPUMemory&mem,CommandBuffer &cb){
  *
  * @return color 4 floats
  */
-glm::vec4 read_texture(Texture const&texture,glm::vec2 uv){
-  if(!texture.data)return glm::vec4(0.f);
-  auto uv1 = glm::fract(uv);
-  auto uv2 = uv1*glm::vec2(texture.width-1,texture.height-1)+0.5f;
-  auto pix = glm::uvec2(uv2);
+glm::vec4 read_texture(Texture const& texture, glm::vec2 uv){
+  if(!texture.data) 
+      return glm::vec4(0.f);
+
+  const glm::vec2 uv1 = glm::fract(uv);
+  const glm::vec2 uv2 = uv1*glm::vec2(texture.width-1,texture.height-1)+0.5f;
+  const glm::uvec2 pix = glm::uvec2(uv2);
+
   //auto t   = glm::fract(uv2);
   glm::vec4 color = glm::vec4(0.f,0.f,0.f,1.f);
-  for(uint32_t c=0;c<texture.channels;++c)
-    color[c] = texture.data[(pix.y*texture.width+pix.x)*texture.channels+c]/255.f;
+  uint32_t index = (pix.y * texture.width + pix.x) * texture.channels;
+
+  for(uint8_t c = 0; c < texture.channels; ++c)
+    color[c] = texture.data[index + c]/255.f;
+
   return color;
 }
 

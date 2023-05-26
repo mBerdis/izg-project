@@ -28,7 +28,7 @@ DrawCommand createDrawCommand(Mesh* mesh)
 	return draw;
 }
 
-void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node* node, glm::mat4 varMat)
+void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node* node, glm::mat4& varMat)
 {
 	glm::mat4 modelMat = varMat * node->modelMatrix;
 
@@ -69,7 +69,7 @@ void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& mode
  * @param model model structure
  */
 //! [drawModel]
-void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
+void prepareModel(GPUMemory&mem, CommandBuffer& commandBuffer, Model const& model){
   (void)mem;
   (void)commandBuffer;
   (void)model;
@@ -124,7 +124,7 @@ void prepareModel(GPUMemory&mem,CommandBuffer&commandBuffer,Model const&model){
  * @param si shader interface
  */
 //! [drawModel_vs]
-void drawModel_vertexShader(OutVertex&outVertex,InVertex const&inVertex,ShaderInterface const&si)
+void drawModel_vertexShader(OutVertex& outVertex,InVertex const &inVertex,ShaderInterface const &si)
 {
 	const int index = 10 + inVertex.gl_DrawID * 5;
 
@@ -158,7 +158,7 @@ void drawModel_vertexShader(OutVertex&outVertex,InVertex const&inVertex,ShaderIn
  * @param si shader interface
  */
 //! [drawModel_fs]
-void drawModel_fragmentShader(OutFragment&outFragment,InFragment const&inFragment,ShaderInterface const&si){
+void drawModel_fragmentShader(OutFragment& outFragment,InFragment const&inFragment,ShaderInterface const&si){
 	(void)outFragment;
 	(void)inFragment;
 	(void)si;
