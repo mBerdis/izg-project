@@ -271,12 +271,13 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
 
     min_x = (int) glm::max(min_x, 0.f);
     min_y = (int) glm::max(min_y, 0.f);
+    max_x = (float) ((int) (glm::min(max_x + 1.f, ((float) frame.width))));
+    max_y = (float) ((int) (glm::min(max_y + 1.f, ((float) frame.height))));
 
     float moved_min_x = min_x + 0.5f;
     float moved_min_y = min_y + 0.5f;
+    float moved_max_x = max_x - 0.5f;
 
-    max_x = (float) ((int) (glm::min(max_x + 1.f, (float) frame.width)));
-    max_y = (float) ((int) (glm::min(max_y + 1.f, (float) frame.height)));
     ////////////////////////////////////////////////////////////////
 
 
@@ -299,6 +300,7 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
         float y = moved_min_y;
         float x = moved_min_x;
         bool insideTriangle = false;
+        bool skipped = false;
 
         while (y < max_y)
         {
@@ -313,9 +315,20 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
                 else if (insideTriangle)
                 {
                     // didnt rasterize a current pixel, but did previous
+                    skipped = true;
                     break;
                 }
             }
+
+            if (!skipped)
+            {
+                --x;
+                E1 += dirVec1.y;
+                E2 += dirVec2.y;
+                E3 += dirVec3.y;
+            }
+            else
+                skipped = false;       // reset
 
             // next iteration with different direction
             // move up
@@ -327,7 +340,7 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
             insideTriangle = false;
 
             // correct the ascention, go to right while inside of a triangle
-            while (E1 >= 0 && E2 >= 0 && E3 >= 0 && x < max_x)
+            while (E1 >= 0 && E2 >= 0 && E3 >= 0 && x < moved_max_x)
             {
                 ++x;
                 E1 -= dirVec1.y;
@@ -346,17 +359,20 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
                 else if (insideTriangle)
                 {
                     // didnt rasterize a current pixel, but did previous
+                    skipped = true;
                     break;
                 }
             }
 
-            if (x < moved_min_x)
+            if (!skipped)
             {
-                x = moved_min_x;
+                ++x;
                 E1 -= dirVec1.y;
                 E2 -= dirVec2.y;
                 E3 -= dirVec3.y;
             }
+            else
+                skipped = false;       // reset
 
             // move up
             if (!(++y < max_y))
@@ -381,6 +397,7 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
         float y = moved_min_y;
         float x = moved_min_x;
         bool insideTriangle = false;
+        bool skipped = false;
 
         while (y < max_y)
         {
@@ -395,9 +412,20 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
                 else if (insideTriangle)
                 {
                     // didnt rasterize a current pixel, but did previous
+                    skipped = true;
                     break;
                 }
             }
+
+            if (!skipped)
+            {
+                --x;
+                E1 += dirVec1.y;
+                E2 += dirVec2.y;
+                E3 += dirVec3.y;
+            }
+            else
+                skipped = false;       // reset
 
             // next iteration with different direction
             // move up
@@ -408,8 +436,8 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
             E3 += dirVec3.x;
             insideTriangle = false;
 
-            // go to right while inside of a triangle
-            while (E1 <= 0 && E2 <= 0 && E3 <= 0 && x < max_x)
+            // correct the ascention, go to right while inside of a triangle
+            while (E1 <= 0 && E2 <= 0 && E3 <= 0 && x < moved_max_x)
             {
                 ++x;
                 E1 -= dirVec1.y;
@@ -418,7 +446,7 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
             }
 
             // right to left, decrementing x
-            for (; x > moved_min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
+            for (; x >= moved_min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
             {
                 if (E1 <= 0 && E2 <= 0 && E3 <= 0)
                 {
@@ -428,9 +456,20 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
                 else if (insideTriangle)
                 {
                     // didnt rasterize a current pixel, but did previous
+                    skipped = true;
                     break;
                 }
             }
+
+            if (!skipped)
+            {
+                ++x;
+                E1 -= dirVec1.y;
+                E2 -= dirVec2.y;
+                E3 -= dirVec3.y;
+            }
+            else
+                skipped = false;       // reset
 
             // move up
             if (!(++y < max_y))
@@ -440,7 +479,7 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
             E3 += dirVec3.x;
             insideTriangle = false;
 
-            // go to left while inside of a triangle
+            // correct the ascention, go to left while inside of a triangle
             while (E1 <= 0 && E2 <= 0 && E3 <= 0 && x > moved_min_x)
             {
                 --x;
