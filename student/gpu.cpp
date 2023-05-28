@@ -17,7 +17,7 @@ void readAttributes(Attribute& vertexAtrrib, GPUMemory& mem, VertexAttrib& attri
     if (attrib.type == AttributeType::EMPTY) return;
 
     const void* attribBuffer = mem.buffers[attrib.bufferID].data;
-    unsigned char* bytePtr = reinterpret_cast<unsigned char*>(const_cast<void*>(attribBuffer));
+    unsigned char* bytePtr = (unsigned char*) attribBuffer;
     bytePtr += attrib.offset + attrib.stride * vertexId;
 
     switch (attrib.type)
@@ -139,7 +139,7 @@ void loadAttributesToFragment(InFragment& inFragment, OutVertex& p1, OutVertex& 
     }
 
     // interpolate
-    float s = (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w) + (l2 / p3.gl_Position.w);
+    float s = (float) (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w) + (l2 / p3.gl_Position.w);
     l0 /= p1.gl_Position.w * s;
     l1 /= p2.gl_Position.w * s;
     l2 /= p3.gl_Position.w * s;
@@ -237,14 +237,14 @@ bool isFacingCamera(glm::vec3& cameraPos, glm::vec3& vertexNorm)
     return glm::dot(vertexNorm, cameraPos) > 0;
 }
 
-void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInterface& si)
+void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame& frame, Program& prg, glm::vec3& cameraVec)
 {
     // check if all points of the triangle are same
     if (triangle.points[0].gl_Position == triangle.points[1].gl_Position && triangle.points[1].gl_Position == triangle.points[2].gl_Position)
         return;
 
     // check if triangle is facing a camera, if not discard it.
-    if (cmd.backfaceCulling && !isFacingCamera(mem.uniforms[2].v3, triangle.points[0].attributes[1].v3))
+    if (cmd.backfaceCulling && !isFacingCamera(cameraVec, triangle.points[0].attributes[1].v3))
         return;
 
     // calculate area of whole triangle
@@ -261,9 +261,6 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
     if (clockwise && cmd.backfaceCulling)
         return;
 
-    Frame frame = mem.framebuffer;
-    Program prg = mem.programs[cmd.programID];
-
     ////////////////////////////////////////////////////////////////
     // bounding box
     float min_x = glm::min(triangle.points[0].gl_Position.x, glm::min(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
@@ -272,10 +269,14 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
     float max_x = glm::max(triangle.points[0].gl_Position.x, glm::max(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
     float max_y = glm::max(triangle.points[0].gl_Position.y, glm::max(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
 
-    min_x = ((int) (glm::max(min_x, 0.f))) + 0.5f;
-    min_y = ((int) (glm::max(min_y, 0.f))) + 0.5f;
-    max_x = (float) ((int) (glm::min(max_x + 1.f, (float) (frame.width))));
-    max_y = (float) ((int) (glm::min(max_y + 1.f, (float) (frame.height))));
+    min_x = (int) glm::max(min_x, 0.f);
+    min_y = (int) glm::max(min_y, 0.f);
+
+    float moved_min_x = min_x + 0.5f;
+    float moved_min_y = min_y + 0.5f;
+
+    max_x = (float) ((int) (glm::min(max_x + 1.f, (float) frame.width)));
+    max_y = (float) ((int) (glm::min(max_y + 1.f, (float) frame.height)));
     ////////////////////////////////////////////////////////////////
 
 
@@ -288,18 +289,18 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
     glm::vec2 dirVec3 = glm::vec2(triangle.points[0].gl_Position.x - triangle.points[2].gl_Position.x, triangle.points[0].gl_Position.y - triangle.points[2].gl_Position.y);
 
     // EDGE FUNCTIONS
-    float E1 = ((min_y - triangle.points[0].gl_Position.y) * dirVec1.x) - ((min_x - triangle.points[0].gl_Position.x) * dirVec1.y);
-    float E2 = ((min_y - triangle.points[1].gl_Position.y) * dirVec2.x) - ((min_x - triangle.points[1].gl_Position.x) * dirVec2.y);
-    float E3 = ((min_y - triangle.points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle.points[2].gl_Position.x) * dirVec3.y);
+    float E1 = ((moved_min_y - triangle.points[0].gl_Position.y) * dirVec1.x) - ((moved_min_x - triangle.points[0].gl_Position.x) * dirVec1.y);
+    float E2 = ((moved_min_y - triangle.points[1].gl_Position.y) * dirVec2.x) - ((moved_min_x - triangle.points[1].gl_Position.x) * dirVec2.y);
+    float E3 = ((moved_min_y - triangle.points[2].gl_Position.y) * dirVec3.x) - ((moved_min_x - triangle.points[2].gl_Position.x) * dirVec3.y);
     ////////////////////////////////////////////////////////////////
 
     if (!clockwise)
     {
-        float y = min_y;
-        float x = min_x;
+        float y = moved_min_y;
+        float x = moved_min_x;
         bool insideTriangle = false;
 
-        for (; y < max_y; ++y, E1 += dirVec1.x, E2 += dirVec2.x, E3 += dirVec3.x, insideTriangle = false)
+        while (y < max_y)
         {
             // left to right, incrementing x
             for (; x < max_x; ++x, E1 -= dirVec1.y, E2 -= dirVec2.y, E3 -= dirVec3.y)
@@ -325,8 +326,17 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
             E3 += dirVec3.x;
             insideTriangle = false;
 
+            // correct the ascention, go to right while inside of a triangle
+            while (E1 >= 0 && E2 >= 0 && E3 >= 0 && x < max_x)
+            {
+                ++x;
+                E1 -= dirVec1.y;
+                E2 -= dirVec2.y;
+                E3 -= dirVec3.y;
+            }
+
             // right to left, decrementing x
-            for (; x >= min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
+            for (; x >= moved_min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
             {
                 if (E1 >= 0 && E2 >= 0 && E3 >= 0)
                 {
@@ -338,16 +348,41 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
                     // didnt rasterize a current pixel, but did previous
                     break;
                 }
+            }
+
+            if (x < moved_min_x)
+            {
+                x = moved_min_x;
+                E1 -= dirVec1.y;
+                E2 -= dirVec2.y;
+                E3 -= dirVec3.y;
+            }
+
+            // move up
+            if (!(++y < max_y))
+                break;
+            E1 += dirVec1.x;
+            E2 += dirVec2.x;
+            E3 += dirVec3.x;
+            insideTriangle = false;
+
+            // correct the ascention, go to left while inside of a triangle
+            while (E1 >= 0 && E2 >= 0 && E3 >= 0 && x > moved_min_x)
+            {
+                --x;
+                E1 += dirVec1.y;
+                E2 += dirVec2.y;
+                E3 += dirVec3.y;
             }
         }
     }
     else
     {
-        float y = min_y;
-        float x = min_x;
+        float y = moved_min_y;
+        float x = moved_min_x;
         bool insideTriangle = false;
 
-        for (; y < max_y; ++y, E1 += dirVec1.x, E2 += dirVec2.x, E3 += dirVec3.x, insideTriangle = false)
+        while (y < max_y)
         {
             // left to right, incrementing x
             for (; x < max_x; ++x, E1 -= dirVec1.y, E2 -= dirVec2.y, E3 -= dirVec3.y)
@@ -373,8 +408,17 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
             E3 += dirVec3.x;
             insideTriangle = false;
 
+            // go to right while inside of a triangle
+            while (E1 <= 0 && E2 <= 0 && E3 <= 0 && x < max_x)
+            {
+                ++x;
+                E1 -= dirVec1.y;
+                E2 -= dirVec2.y;
+                E3 -= dirVec3.y;
+            }
+
             // right to left, decrementing x
-            for (; x >= min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
+            for (; x > moved_min_x; --x, E1 += dirVec1.y, E2 += dirVec2.y, E3 += dirVec3.y)
             {
                 if (E1 <= 0 && E2 <= 0 && E3 <= 0)
                 {
@@ -386,6 +430,23 @@ void rasterize(GPUMemory& mem, Triangle& triangle, DrawCommand& cmd, ShaderInter
                     // didnt rasterize a current pixel, but did previous
                     break;
                 }
+            }
+
+            // move up
+            if (!(++y < max_y))
+                break;
+            E1 += dirVec1.x;
+            E2 += dirVec2.x;
+            E3 += dirVec3.x;
+            insideTriangle = false;
+
+            // go to left while inside of a triangle
+            while (E1 <= 0 && E2 <= 0 && E3 <= 0 && x > moved_min_x)
+            {
+                --x;
+                E1 += dirVec1.y;
+                E2 += dirVec2.y;
+                E3 += dirVec3.y;
             }
         }
     }
@@ -509,6 +570,10 @@ void draw(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID)
     si.uniforms = mem.uniforms;
     si.textures = mem.textures;
 
+    Frame     frame     = mem.framebuffer;
+    Program   prg       = mem.programs[cmd.programID];
+    glm::vec3 cameraVec = mem.uniforms[2].v3;
+
     for (uint32_t triangleIndex = 0; triangleIndex < cmd.nofVertices / 3; triangleIndex++)
     {
         Triangle triangle = primitiveAssembly(mem, cmd, drawID, triangleIndex, si);
@@ -526,13 +591,13 @@ void draw(GPUMemory& mem, DrawCommand& cmd, uint32_t drawID)
                 // two triangles to rasterize
                 perspectiveDivision(secondTriangle);
                 viewportTransformation(secondTriangle, mem.framebuffer.width, mem.framebuffer.height);
-                rasterize(mem, secondTriangle, cmd, si);
+                rasterize(secondTriangle, cmd, si, frame, prg, cameraVec);
                 break;
         }
 
         perspectiveDivision(triangle);
         viewportTransformation(triangle, mem.framebuffer.width, mem.framebuffer.height);
-        rasterize(mem, triangle, cmd, si);
+        rasterize(triangle, cmd, si, frame, prg, cameraVec);
     }
 }
 
