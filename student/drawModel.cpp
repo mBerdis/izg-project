@@ -9,36 +9,36 @@
 
 ///\endcond
 
-DrawCommand createDrawCommand(Mesh* mesh)
+DrawCommand createDrawCommand(Mesh& mesh)
 {
 	VertexArray vao;
-	vao.indexBufferID	= mesh->indexBufferID;
-	vao.indexOffset		= mesh->indexOffset	 ;
-	vao.indexType		= mesh->indexType	 ;
-	vao.vertexAttrib[0] = mesh->position	 ;
-	vao.vertexAttrib[1] = mesh->normal		 ;
-	vao.vertexAttrib[2] = mesh->texCoord	 ;
+	vao.indexBufferID	= mesh.indexBufferID;
+	vao.indexOffset		= mesh.indexOffset	;
+	vao.indexType		= mesh.indexType	;
+	vao.vertexAttrib[0] = mesh.position		;
+	vao.vertexAttrib[1] = mesh.normal		;
+	vao.vertexAttrib[2] = mesh.texCoord		;
 
 	DrawCommand draw;
-	draw.backfaceCulling = !mesh->doubleSided;
-	draw.nofVertices	 = mesh->nofIndices ;
+	draw.backfaceCulling = !mesh.doubleSided;
+	draw.nofVertices	 = mesh.nofIndices  ;
 	draw.programID		 = 0				;
 	draw.vao			 = vao				;
 
 	return draw;
 }
 
-void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node* node, glm::mat4& varMat)
+void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& model, Node& node, glm::mat4& varMat)
 {
-	glm::mat4 modelMat = varMat * node->modelMatrix;
+	glm::mat4 modelMat = varMat * node.modelMatrix;
 
 	// process self
-	if (node->mesh != -1)
+	if (node.mesh != -1)
 	{
-		Mesh mesh = model.meshes[node->mesh];
+		Mesh mesh = model.meshes[node.mesh];
 		
 		// create draw command
-		DrawCommand draw = createDrawCommand(&mesh);
+		DrawCommand draw = createDrawCommand(mesh);
 		if (commandBuffer.nofCommands + 1 < commandBuffer.maxCommands)
 		{
 			commandBuffer.commands[commandBuffer.nofCommands].type = CommandType::DRAW;
@@ -55,9 +55,9 @@ void prepareNode(GPUMemory& mem, CommandBuffer& commandBuffer, Model const& mode
 	}
 
 	// process children
-	for (Node child : node->children)
+	for (Node child : node.children)
 	{
-		prepareNode(mem, commandBuffer, model, &child, modelMat);
+		prepareNode(mem, commandBuffer, model, child, modelMat);
 	}
 }
 
@@ -76,20 +76,13 @@ void prepareModel(GPUMemory&mem, CommandBuffer& commandBuffer, Model const& mode
   /// \todo Tato funkce připraví command buffer pro model a nastaví správně pamět grafické karty.<br>
   /// Vaším úkolem je správně projít model a vložit vykreslovací příkazy do commandBufferu.
   /// Zároveň musíte vložit do paměti textury, buffery a uniformní proměnné, které buffer command buffer využívat.
-  /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech.
+  /// Bližší informace jsou uvedeny na hlavní stránce dokumentace a v testech. 
   
-  int i = 0;
-  for (Buffer const buf : model.buffers)
-  {
-	  mem.buffers[i] = buf;
-	  i++;
-  }
-  i = 0;
-  for (Texture const tex : model.textures)
-  {
-	  mem.textures[i] = tex;
-	  i++;
-  }
+  for (size_t i = 0; i < model.buffers.size(); i++)
+	  mem.buffers[i] = model.buffers[i];
+
+  for (size_t i = 0; i < model.textures.size(); i++)
+	  mem.textures[i] = model.textures[i];
 
   mem.programs[0].vs2fs[0] = AttributeType::VEC3;
   mem.programs[0].vs2fs[1] = AttributeType::VEC3;
@@ -110,11 +103,28 @@ void prepareModel(GPUMemory&mem, CommandBuffer& commandBuffer, Model const& mode
 
   for (Node root : model.roots)
   {
-	  prepareNode(mem, commandBuffer, model, &root, glm::mat4(1.f));
+	  prepareNode(mem, commandBuffer, model, root, glm::mat4(1.f));
   }
 
 }
 //! [drawModel]
+
+
+// Function to multiply two square matrices
+/*
+glm::mat4 multiplyMatrices(const glm::mat4& matrix1, const glm::mat4& matrix2) {
+	glm::mat4 result = glm::mat4();
+
+	for (int i = 0; i < 4; ++i) {
+		for (int k = 0; k < 4; ++k) {
+			for (int j = 0; j < 4; ++j) {
+				result[i][j] += matrix1[i][k] * matrix2[k][j];
+			}
+		}
+	}
+	return result;
+}
+*/
 
 /**
  * @brief This function represents vertex shader of texture rendering method.
@@ -126,18 +136,19 @@ void prepareModel(GPUMemory&mem, CommandBuffer& commandBuffer, Model const& mode
 //! [drawModel_vs]
 void drawModel_vertexShader(OutVertex& outVertex,InVertex const &inVertex,ShaderInterface const &si)
 {
-	const int index = 10 + inVertex.gl_DrawID * 5;
+	int index = 10 + inVertex.gl_DrawID * 5;
 
 	// Apply vertex transformations
-	const glm::vec4 vertex1 = glm::vec4(inVertex.attributes[0].v3, 1.f);
-	const glm::vec4 vertex2 = glm::vec4(inVertex.attributes[1].v3, 0.f);
+	glm::vec4 vertex1 = glm::vec4(inVertex.attributes[0].v3, 1.f);
+	glm::vec4 vertex2 = glm::vec4(inVertex.attributes[1].v3, 0.f);
 
 	outVertex.attributes[0].v3 = si.uniforms[index].m4 * vertex1;
 	outVertex.attributes[1].v3 = si.uniforms[index + 1].m4 * vertex2;
 	outVertex.attributes[2].v2 = inVertex.attributes[2].v2;
 	outVertex.attributes[3].u1 = inVertex.gl_DrawID;
 
-	const glm::mat4 transformationMatrix = si.uniforms[0].m4 * si.uniforms[index].m4;
+	glm::mat4 transformationMatrix = si.uniforms[0].m4 * si.uniforms[index].m4;
+	//glm::mat4 transformationMatrix = multiplyMatrices(si.uniforms[index].m4, si.uniforms[0].m4);
 	outVertex.gl_Position = transformationMatrix * vertex1;
 
 	/*

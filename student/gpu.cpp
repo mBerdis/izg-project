@@ -295,6 +295,8 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
     float E3 = ((moved_min_y - triangle.points[2].gl_Position.y) * dirVec3.x) - ((moved_min_x - triangle.points[2].gl_Position.x) * dirVec3.y);
     ////////////////////////////////////////////////////////////////
 
+    // Beware not readable code ahead, I tried to achieve efficiency.
+    // Pineda rasterization algorith enhanced to only stay inside of a triangle.
     if (!clockwise)
     {
         float y = moved_min_y;
