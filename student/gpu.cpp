@@ -116,7 +116,7 @@ void viewportTransformation(Triangle& triangle, uint32_t halfWidth, uint32_t hal
     }
 }
 
-void loadAttributesToFragment(InFragment& inFragment, OutVertex& p1, OutVertex& p2, OutVertex& p3, AttributeType type, size_t i, double l0, float l1, float l2)
+void loadAttributesToFragment(InFragment& inFragment, OutVertex& p1, OutVertex& p2, AttributeType type, size_t i, float l0, float l1)
 {
     // dont interpolate integer attribs
     switch (type)
@@ -138,41 +138,37 @@ void loadAttributesToFragment(InFragment& inFragment, OutVertex& p1, OutVertex& 
     }
 
     // interpolate
-    float s = (float) (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w) + (l2 / p3.gl_Position.w);
+    float s = (float) (l0 / p1.gl_Position.w) + (l1 / p2.gl_Position.w);
     l0 /= p1.gl_Position.w * s;
     l1 /= p2.gl_Position.w * s;
-    l2 /= p3.gl_Position.w * s;
 
     switch (type)
     {
         case AttributeType::VEC4:
             for (int vecI = 0; vecI < 4; vecI++){
-                inFragment.attributes[i].v4[vecI] = (float) ((p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1) + (p3.attributes[i].v4[vecI] * l2));
+                inFragment.attributes[i].v4[vecI] = (float) ((p1.attributes[i].v4[vecI] * l0) + (p2.attributes[i].v4[vecI] * l1));
             }
             break;
 
         case AttributeType::VEC3:
             for (int vecI = 0; vecI < 3; vecI++){
-                inFragment.attributes[i].v3[vecI] = (float) ((p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1) + (p3.attributes[i].v3[vecI] * l2));
+                inFragment.attributes[i].v3[vecI] = (float) ((p1.attributes[i].v3[vecI] * l0) + (p2.attributes[i].v3[vecI] * l1));
             }
             break;
         case AttributeType::VEC2:
             for (int vecI = 0; vecI < 2; vecI++){
-                inFragment.attributes[i].v2[vecI] = (float) ((p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1) + (p3.attributes[i].v2[vecI] * l2));
+                inFragment.attributes[i].v2[vecI] = (float) ((p1.attributes[i].v2[vecI] * l0) + (p2.attributes[i].v2[vecI] * l1));
             }
             break;
         default:
             // its FLOAT
-            inFragment.attributes[i].v1 = (float) ((p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1) + (p3.attributes[i].v1 * l2));
+            inFragment.attributes[i].v1 = (float) ((p1.attributes[i].v1 * l0) + (p2.attributes[i].v1 * l1));
             break;
     }
 }
 
 void perFragmentOperations(Frame& framebuffer, OutFragment& outFragment, float depth, float x, float y)
 {
-    x -= 0.5f;
-    y -= 0.5f;
-
     int pixelPos = (int)(x + y * framebuffer.width);
 
     if (depth >= framebuffer.depth[pixelPos])
@@ -201,12 +197,9 @@ void perFragmentOperations(Frame& framebuffer, OutFragment& outFragment, float d
     framebuffer.color[pos + 3] = (uint8_t) color.a;
 }
 
-void loadFragmentToShader(Frame& frame, float x, float y, Program& prg, ShaderInterface& si, OutVertex& p1, OutVertex& p2, OutVertex& p3, float area, float area2, float area3)
+void loadFragmentToShader(float x, float y, Frame& frame, Program& prg, ShaderInterface& si, OutVertex& p1, OutVertex& p2, float l0, float l1)
 {
-    float l0 = area2 / area;
-    float l1 = area3 / area;
-    float l2 = 1.f - l0 - l1;
-    float depth = p1.gl_Position.z * l0 + p2.gl_Position.z * l1 + p3.gl_Position.z * l2;
+    float depth = p1.gl_Position.z * l0 + p2.gl_Position.z * l1;
 
     InFragment inFragment;
     inFragment.gl_FragCoord.x = x;
@@ -216,7 +209,7 @@ void loadFragmentToShader(Frame& frame, float x, float y, Program& prg, ShaderIn
     for (size_t i = 0; i < maxAttributes; i++)
     {
         if (prg.vs2fs[i] != AttributeType::EMPTY)
-            loadAttributesToFragment(inFragment, p1, p2, p3, prg.vs2fs[i], i, l0, l1, l2);
+            loadAttributesToFragment(inFragment, p1, p2, prg.vs2fs[i], i, l0, l1);
     }
 
     OutFragment outFragment;
@@ -236,6 +229,114 @@ bool isFacingCamera(glm::vec3& cameraPos, glm::vec3& vertexNorm)
     return glm::dot(vertexNorm, cameraPos) > 0;
 }
 
+void drawLine(OutVertex& v1, OutVertex& v2, Frame& frame, Program& prg, ShaderInterface& si, glm::vec2& min, glm::vec2& max)
+{
+    int x1 = (int) v1.gl_Position.x;
+    int y1 = (int) v1.gl_Position.y;
+    int x2 = (int) v2.gl_Position.x;
+    int y2 = (int) v2.gl_Position.y;
+
+    // DDA algorithm
+    float dy = y2 - y1;
+    float dx = x2 - x1;
+
+    if (dx < 0)
+    {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
+    
+    if (abs(dx) < abs(dy))
+    {
+        std::swap(dx, dy);
+        float k = dy / dx;
+        int y = x1;
+        float ratioInc = 1.f / abs(dx);
+        float l0 = 0.f;
+
+        for (int x = y1; x <= y2; ++x)
+        {
+            if (!(y >= max.x || x >= max.y || y < min.x || x < min.y))
+            {
+                loadFragmentToShader(y, x, frame, prg, si, v1, v2, 1.f - l0, l0);
+            }
+            l0 += ratioInc;
+            y += (int) k;
+        }
+    }
+    else 
+    {
+        float k = dy / dx;
+        int y = y1;
+        float ratioInc = 1.f / abs(dx);
+        float l0 = 0.f;
+
+        for (int x = x1; x <= x2; ++x)
+        {
+            if (!(x >= max.x || y >= max.y || x < min.x || y < min.y))
+            {
+                loadFragmentToShader(x, y, frame, prg, si, v1, v2, l0, 1.f - l0);
+            }
+            l0 += ratioInc;
+            y += (int) k;
+        }
+    } 
+}
+
+void drawBresLine(int decide, OutVertex& v1, OutVertex& v2, Frame& frame, Program& prg, ShaderInterface& si, glm::vec2& min, glm::vec2& max)
+{
+    int x = ceilf(v1.gl_Position.x);
+    int y = ceilf(v1.gl_Position.y);
+    int x2 = ceilf(v2.gl_Position.x);
+    int y2 = ceilf(v2.gl_Position.y);
+
+    float l0 = 0.f;
+
+    bool yLonger = false;
+    int incrementVal, endVal;
+    int shortLen = y2 - y;
+    int longLen = x2 - x;
+    if (abs(shortLen) > abs(longLen)) {
+        int swap = shortLen;
+        shortLen = longLen;
+        longLen = swap;
+        yLonger = true;
+    }
+    endVal = longLen;
+    if (longLen < 0) {
+        incrementVal = -1;
+        longLen = -longLen;
+    }
+    else incrementVal = 1;
+    int decInc;
+    if (longLen == 0) decInc = 0;
+    else decInc = (shortLen << 16) / longLen;
+    int j = 0;
+    if (yLonger) {
+        for (int i = 0; i != endVal; i += incrementVal) {
+            x = x + (j >> 16);
+            y += i;
+            if (!(y >= max.x || x >= max.y || y < min.x || x < min.y))
+            {
+                loadFragmentToShader(x, y, frame, prg, si, v1, v2, 1.f - l0, l0);
+            }
+            j += decInc;
+        }
+    }
+    else {
+        for (int i = 0; i != endVal; i += incrementVal) {
+            x += i;
+            y = y + (j >> 16);
+
+            if (!(y >= max.x || x >= max.y || y < min.x || x < min.y))
+            {
+                loadFragmentToShader(x, y, frame, prg, si, v1, v2, 1.f - l0, l0);
+            }
+            j += decInc;
+        }
+    }
+}
+
 void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame& frame, Program& prg, glm::vec3& cameraVec)
 {
     // check if all points of the triangle are same
@@ -246,113 +347,32 @@ void rasterize(Triangle& triangle, DrawCommand& cmd, ShaderInterface& si, Frame&
     if (cmd.backfaceCulling && !isFacingCamera(cameraVec, triangle.points[0].attributes[1].v3))
         return;
 
-    // calculate area of whole triangle
-    float triangleArea = edgeFunction(triangle.points[0], triangle.points[1], triangle.points[2]);
-
     // check if triangle is cw or ccw
     bool clockwise = true;
-    if (triangleArea < 0)
-    {
+    if (edgeFunction(triangle.points[0], triangle.points[1], triangle.points[2]) < 0)
         clockwise = false;
-        triangleArea = abs(triangleArea);
-    }
 
     if (clockwise && cmd.backfaceCulling)
         return;
 
+    glm::vec2 max = glm::vec2();
+    glm::vec2 min = glm::vec2();
     ////////////////////////////////////////////////////////////////
     // bounding box
-    float min_x = glm::min(triangle.points[0].gl_Position.x, glm::min(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
-    float min_y = glm::min(triangle.points[0].gl_Position.y, glm::min(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
+    max.x = glm::min(triangle.points[0].gl_Position.x, glm::min(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
+    min.y = glm::min(triangle.points[0].gl_Position.y, glm::min(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
+    max.x = glm::max(triangle.points[0].gl_Position.x, glm::max(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
+    max.y = glm::max(triangle.points[0].gl_Position.y, glm::max(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
 
-    float max_x = glm::max(triangle.points[0].gl_Position.x, glm::max(triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.x));
-    float max_y = glm::max(triangle.points[0].gl_Position.y, glm::max(triangle.points[1].gl_Position.y, triangle.points[2].gl_Position.y));
-
-    min_x = (int) glm::max(min_x, 0.f) + 0.5f;
-    min_y = (int) glm::max(min_y, 0.f) + 0.5f;
-    max_x = (float) ((int) (glm::min(max_x + 1.f, ((float) frame.width))));
-    max_y = (float) ((int) (glm::min(max_y + 1.f, ((float) frame.height))));
+    min.x = (int) glm::max(min.x, 0.f);
+    min.y = (int) glm::max(min.y, 0.f);
+    max.x = (float) ((int) (glm::min(max.x + 1.f, ((float) frame.width))));
+    max.y = (float) ((int) (glm::min(max.y + 1.f, ((float) frame.height))));
     ////////////////////////////////////////////////////////////////
 
-
-    ////////////////////////////////////////////////////////////////
-    // point[1] - point[0]
-    glm::vec2 dirVec1 = glm::vec2(triangle.points[1].gl_Position.x - triangle.points[0].gl_Position.x, triangle.points[1].gl_Position.y - triangle.points[0].gl_Position.y);
-    // point[2] - point[1]
-    glm::vec2 dirVec2 = glm::vec2(triangle.points[2].gl_Position.x - triangle.points[1].gl_Position.x, triangle.points[2].gl_Position.y - triangle.points[1].gl_Position.y);
-    // point[0] - point[2]
-    glm::vec2 dirVec3 = glm::vec2(triangle.points[0].gl_Position.x - triangle.points[2].gl_Position.x, triangle.points[0].gl_Position.y - triangle.points[2].gl_Position.y);
-
-    // EDGE FUNCTIONS
-    float E1 = ((min_y - triangle.points[0].gl_Position.y) * dirVec1.x) - ((min_x - triangle.points[0].gl_Position.x) * dirVec1.y);
-    float E2 = ((min_y - triangle.points[1].gl_Position.y) * dirVec2.x) - ((min_x - triangle.points[1].gl_Position.x) * dirVec2.y);
-    float E3 = ((min_y - triangle.points[2].gl_Position.y) * dirVec3.x) - ((min_x - triangle.points[2].gl_Position.x) * dirVec3.y);
-    ////////////////////////////////////////////////////////////////
-
-    if (!clockwise)
-    {
-        for (float y = min_y; y < max_y; y++)
-        {
-            float t1 = E1;
-            float t2 = E2;
-            float t3 = E3;
-            bool insideTriangle = false;
-
-            for (float x = min_x; x < max_x; x++)
-            {
-                if (t1 >= 0 && t2 > 0 && t3 >= 0)
-                {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, t2, t3);
-                    insideTriangle = true;
-                }
-                else if (insideTriangle)
-                {
-                    // got out of triangle
-                    break;
-                }
-
-                t1 -= dirVec1.y;
-                t2 -= dirVec2.y;
-                t3 -= dirVec3.y;
-            }
-
-            E1 += dirVec1.x;
-            E2 += dirVec2.x;
-            E3 += dirVec3.x;
-        }
-    }
-    else
-    {
-        for (float y = min_y; y < max_y; y++)
-        {
-            float t1 = E1;
-            float t2 = E2;
-            float t3 = E3;
-            bool insideTriangle = false;
-
-            for (float x = min_x; x < max_x; x++)
-            {
-                if (t1 <= 0 && t2 <= 0 && t3 <= 0)
-                {
-                    loadFragmentToShader(frame, x, y, prg, si, triangle.points[0], triangle.points[1], triangle.points[2], triangleArea, abs(t2), abs(t3));
-                    insideTriangle = true;
-                }
-                else if (insideTriangle)
-                {
-                    // didnt rasterize a current pixel, but did previous
-                    break;
-                }
-
-                t1 -= dirVec1.y;
-                t2 -= dirVec2.y;
-                t3 -= dirVec3.y;
-            }
-
-            E1 += dirVec1.x;
-            E2 += dirVec2.x;
-            E3 += dirVec3.x;
-        }
-    }
+    drawBresLine(0, triangle.points[0], triangle.points[1], frame, prg, si, min, max);
+    drawBresLine(0, triangle.points[0], triangle.points[2], frame, prg, si, min, max);
+    drawBresLine(0, triangle.points[2], triangle.points[1], frame, prg, si, min, max);
 }
 
 void cutEdge(OutVertex& a, OutVertex& b, Program& prg)
